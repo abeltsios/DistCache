@@ -11,7 +11,7 @@ namespace DistCache.Server
 {
     public class DistCacheServerConfig : DistCacheConfigBase
     {
-        public string InstanceEndPoint { get; protected set; }
+        public string InstanceEndPoint { get; set; } = "0.0.0.0:5789";
 
         public DistCacheServerConfig() : base()
         {

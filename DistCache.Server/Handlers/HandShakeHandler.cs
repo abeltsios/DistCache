@@ -9,11 +9,11 @@ using System.Net;
 using DistCache.Common.NetworkManagement;
 using DistCache.Common;
 using DistCache.Common.Utilities;
-using DistCache.Server.Protocol.Messages;
+using DistCache.Common.Protocol.Messages;
 
 namespace DistCache.Server.Protocol.Handlers
 {
-    public class HandShakeHandler : SocketHandler
+    public class HandShakeServerHandler : SocketHandler
     {
         public enum HandShakeState
         {
@@ -23,14 +23,15 @@ namespace DistCache.Server.Protocol.Handlers
             ProtocolError
         }
 
-        public Guid TemporaryID { get; private set; } = Guid.NewGuid();
+        public Guid TemporaryID { get; private set; }
 
         public HandShakeState State { get; private set; } = HandShakeState.Awaiting;
         private CacheServer _server;
 
 
-        public HandShakeHandler(TcpClient tcp, CacheServer server) : base(tcp)
+        public HandShakeServerHandler(TcpClient tcp, CacheServer server,Guid tempGuid) : base(tcp, server.Config)
         {
+            this.TemporaryID = tempGuid;
             this._server = server;
         }
 
@@ -38,8 +39,8 @@ namespace DistCache.Server.Protocol.Handlers
         {
             try
             {
-                HandShakeMessage msg = BsonUtilities.Deserialise<HandShakeMessage>(message);
-                if (ConfigProvider.Password.Equals(msg.AuthPassword))
+                HandShakeRequest msg = BsonUtilities.Deserialise<HandShakeRequest>(message);
+                if (config.Password.Equals(msg.AuthPassword))
                 {
                     State = HandShakeState.Authorised;
                 }
@@ -56,28 +57,29 @@ namespace DistCache.Server.Protocol.Handlers
                 }, waiter);
 
 
-                if (waiter.Wait(ConfigProvider.SocketWriteTimeout) && State == HandShakeState.Authorised)
+                if (waiter.Wait(config.SocketWriteTimeout) && State == HandShakeState.Authorised)
                 {
                     if (msg.MessageType == MessageTypeEnum.ClientAuthRequest)
                     {
-                        _server.ClientConnected(this._tcp, msg.RegisteredGuid, TemporaryID);
+                        _server.ClientConnected(msg.RegisteredGuid, TemporaryID);
                     }
                     else if (msg.MessageType == MessageTypeEnum.ServerAuthRequest)
                     {
-                        _server.ServerConnected(this._tcp, msg.RegisteredGuid, TemporaryID);
+                        _server.ServerConnected(this.Connection, msg.RegisteredGuid, TemporaryID);
                     }
                 }
                 else
                 {
-                    _server.UnknownConnectionFailed(this._tcp, TemporaryID);
+                    _server.UnknownConnectionFailed(this.Connection, TemporaryID);
                 }
             }
             catch (Exception ex)
             {
                 this.State = HandShakeState.ProtocolError;
-                _server.UnknownConnectionFailed(this._tcp, TemporaryID);
+                _server.UnknownConnectionFailed(this.Connection, TemporaryID);
             }
             return false;
         }
+
     }
 }

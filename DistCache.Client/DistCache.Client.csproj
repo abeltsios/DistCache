@@ -42,6 +42,7 @@
   <ItemGroup>
     <Compile Include="DistCacheClient.cs" />
     <Compile Include="DistCacheClientConfig.cs" />
+    <Compile Include="Handlers\HandShakeClientHandler.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

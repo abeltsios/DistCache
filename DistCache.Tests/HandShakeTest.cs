@@ -6,8 +6,9 @@ using System.Net;
 using DistCache.Common.NetworkManagement;
 using DistCache.Common;
 using DistCache.Server;
+using DistCache.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using DistCache.Server.Protocol.Messages;
+using DistCache.Common.Protocol.Messages;
 
 namespace DistCache.Tests
 {
@@ -19,28 +20,32 @@ namespace DistCache.Tests
         {
             var dic = new Dictionary<string, string>();
 
-            for (int i = 0; i < 10; ++i)
-                dic[Guid.NewGuid().ToString()] = Guid.NewGuid().ToString();
+            string pass = DistCacheConfigBase.GenerateRandomPassword();
 
-
-            var config = new DistCacheServerConfig();
-
-            var srv = new CacheServer(config);
-            Thread.Sleep(TimeSpan.FromSeconds(1));
-            var s = new TcpClient();
-
-            s.Connect(IPAddress.Loopback, 5800);
-            using (var sh = new SocketHandler(s))
+            var serverConfig = new DistCacheServerConfig()
             {
-                var hsm = new HandShakeMessage()
-                {
-                    AuthPassword = ConfigProvider.Password,
-                    MessageType = MessageTypeEnum.ClientAuthRequest,
-                    RegisteredGuid = Guid.NewGuid()
-                };
-                sh.SendMessage(hsm);
-                Thread.Sleep(TimeSpan.FromDays(1));
 
+                Password = pass
+            };
+            int i = 0;
+            var srv = new CacheServer(serverConfig);
+            var ls = new List<DistCacheClient>();
+            while (++i < 100)
+            {
+                var client = DistCacheClient.Create(new DistCacheClientConfig() { Password = pass });
+            }
+            Thread.Sleep(1000);
+            Assert.IsTrue(srv.ConnectedClientsCount == 100);
+            foreach (var c in ls)
+            {
+                try
+                {
+                    c.Dispose();
+                }
+                catch (Exception ex)
+                {
+
+                }
             }
         }
     }

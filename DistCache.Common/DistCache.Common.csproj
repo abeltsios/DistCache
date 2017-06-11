@@ -54,7 +54,7 @@
     <Compile Include="NetworkManagement\SocketHandler.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Protocol\Messages\BaseMessage.cs" />
-    <Compile Include="Protocol\Messages\HandShakeMessage.cs" />
+    <Compile Include="Protocol\Messages\HandShakeRequest.cs" />
     <Compile Include="Protocol\Messages\MessageTypeEnum.cs" />
   </ItemGroup>
   <ItemGroup>

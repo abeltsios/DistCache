@@ -10,7 +10,7 @@ namespace DistCache.Tests
     public class UtilitiesTest
     {
         [TestMethod]
-        public void testcases()
+        public void Testcases()
         {
             
         }

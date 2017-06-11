@@ -9,46 +9,52 @@ using System.Net.NetworkInformation;
 
 namespace DistCache.Common
 {
-    public class ConfigProvider
-    {
-        public const int SocketReadTimeout = 60000;
-        public const int SocketWriteTimeout = 5000;
-        public const int SocketConsideredDead = 60000;
-        public const string Password = "sdflkhgvsdklr42qio7ryfqsdbvq43u95ytqweiufhcq3874q5b8ro72`b1r58egtrOX74TR2I3YGFydt63IQ74";
-    }
-
-
     public class DistCacheConfigBase
     {
-        public int SocketReadTimeout { get; protected set; } = ConfigProvider.SocketReadTimeout;
-        public int SocketWriteTimeout { get; protected set; } = ConfigProvider.SocketWriteTimeout;
-        public int SocketConsideredDead { get; protected set; } = ConfigProvider.SocketConsideredDead;
-        public string Password { get; protected set; } = ConfigProvider.Password;
-        public List<string> Servers { get; protected set; } = new List<string>();
+        public static string GenerateRandomPassword()
+        {
+            return string.Join("", new int[] { 1, 2, 3, 4, 5, 6 }.Select(i => Guid.NewGuid().ToString()).ToArray());
+        }
+        public int SocketReadTimeout { get; set; } = 60000;
+        public int SocketWriteTimeout { get; set; } = 10000;
+        public int SocketConsideredDead { get; set; } = 60000;
+        public string Password { get; set; }
+        public List<string> Servers { get; set; } = new List<string>();
 
         private HashSet<string> ValidatedHosts = new HashSet<string>();
 
         protected IEnumerable<IPEndPoint> ParseIPEndPoint(string hostnameAndPort)
         {
             var sp = hostnameAndPort.Split(':');
-            int port;
-            IPAddress address = null;
             if (sp.Length != 2)
             {
                 throw new ArgumentException($@"invalid hostname and port! e.g. valid '127.0.0.1:6455'");
             }
-            if (!int.TryParse(sp[1], out port) || (port & (ushort)(ushort.MaxValue)) == port)
+            if (!int.TryParse(sp[1], out int port) || (port & (ushort)(ushort.MaxValue)) != port)
             {
                 throw new ArgumentException($"invalid port {sp[1]}");
             }
-            if (!IPAddress.TryParse(sp[0], out address) || !ValidatedHosts.Contains(sp[0]) || !Dns.GetHostEntry(sp[0]).AddressList.Any())
+
+            IPAddress address = null;
+            try
             {
-                throw new ArgumentException($"invalid port {sp[1]}");
+                address = IPAddress.Parse(sp[0]);
             }
+            catch (Exception e)
+            {
+
+            }
+
+            if (address == null && !Dns.GetHostEntry(sp[0]).AddressList.Any())
+            {
+                throw new ArgumentException($"invalid host {sp[1]}");
+            }
+
             if (address == null)
             {
                 //get a random address of the given hostname
                 //due to possible load balancing on dns level
+                ValidatedHosts.Add(sp[0]);
                 return Dns.GetHostEntry(sp[0]).AddressList.OrderBy(a => RandomProvider.Next(0, 1 << 10)).Select(ad => new IPEndPoint(ad, port)).ToList();
             }
             return new List<IPEndPoint> { new IPEndPoint(address, port) };

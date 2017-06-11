@@ -24,22 +24,24 @@ namespace DistCache.Common.NetworkManagement
             public ManualResetEventSlim EventWait { get; set; }
         }
 
-        protected TcpClient _tcp;
+        public TcpClient Connection { get; protected set; }
         private ConcurrentQueue<MessageTriplete> _messagesToSend = new ConcurrentQueue<MessageTriplete>();
 
         private MemoryStreamPool _memoryStream = new MemoryStreamPool();
         private readonly System.Diagnostics.Stopwatch LastSocketIO = System.Diagnostics.Stopwatch.StartNew();
         private bool keepHandlingMessages = true;
         public event EventHandler<SocketHandler> ConnectionError;
+        public DistCacheConfigBase config { get; protected set; }
 
-        public SocketHandler(TcpClient tcp)
+        public SocketHandler(TcpClient tcp, DistCacheConfigBase config)
         {
-            this._tcp = tcp;
-            _tcp.ReceiveBufferSize = 1 << 15;
-            _tcp.SendBufferSize = 1 << 15;
-            _tcp.ReceiveTimeout = ConfigProvider.SocketReadTimeout;
-            _tcp.SendTimeout = ConfigProvider.SocketWriteTimeout;
-            _tcp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+            this.config = config;
+            this.Connection = tcp;
+            Connection.ReceiveBufferSize = 1 << 15;
+            Connection.SendBufferSize = 1 << 15;
+            Connection.ReceiveTimeout = this.config.SocketReadTimeout;
+            Connection.SendTimeout = this.config.SocketWriteTimeout;
+            Connection.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
             new Thread(ReadData).Start();
             new Thread(SendData).Start();
         }
@@ -81,12 +83,13 @@ namespace DistCache.Common.NetworkManagement
                         }
                         try
                         {
-                            _tcp.GetStream().Write(msh.Stream.ToArray(), 0, (int)msh.Stream.Length);
+                            Connection.GetStream().Write(msh.Stream.ToArray(), 0, (int)msh.Stream.Length);
                             LastSocketIO.Restart();
                         }
                         catch (Exception ex)
                         {
-                            this.ConnectionError?.Invoke(this, this);
+                            if (Connection != null)
+                                this.ConnectionError?.Invoke(this, this);
                             return;
                         }
                         finally
@@ -105,7 +108,7 @@ namespace DistCache.Common.NetworkManagement
 
         private void ReadData()
         {
-            using (var sr = new BinaryReader(_tcp.GetStream(), Encoding.UTF8))
+            using (var sr = new BinaryReader(Connection.GetStream(), Encoding.UTF8))
             {
                 try
                 {
@@ -113,23 +116,23 @@ namespace DistCache.Common.NetworkManagement
                     {
                         int? messageLength = new int?();
 
-                        while (_tcp.Connected && _tcp.GetStream().CanRead && _tcp.Available > 0)
+                        while (Connection.Connected && Connection.GetStream().CanRead && Connection.Available > 0)
                         {
                             LastSocketIO.Restart();
-                            if (!messageLength.HasValue && _tcp.Available > 4)
+                            if (!messageLength.HasValue && Connection.Available > 4)
                             {
                                 messageLength = sr.ReadInt32();
                             }
                             else if (messageLength.HasValue)
                             {
                                 int toRead;
-                                if (_tcp.Available > (messageLength.Value - _memoryStream.Stream.Position))
+                                if (Connection.Available > (messageLength.Value - _memoryStream.Stream.Position))
                                 {
                                     toRead = (int)(messageLength.Value - _memoryStream.Stream.Position);
                                 }
                                 else
                                 {
-                                    toRead = _tcp.Available;
+                                    toRead = Connection.Available;
                                 }
 
                                 _memoryStream.Stream.Write(sr.ReadBytes(toRead), 0, toRead);
@@ -198,10 +201,24 @@ namespace DistCache.Common.NetworkManagement
             }
         }
 
-        public virtual bool SocketStatus => _tcp?.Connected == true
-            && LastSocketIO.ElapsedMilliseconds < ConfigProvider.SocketConsideredDead
-            && _tcp?.GetStream()?.CanRead == true
-            && _tcp?.GetStream()?.CanWrite == true;
+        public void Shutdown()
+        {
+            try
+            {
+                var cp = Connection;
+                Connection = null;
+                cp.Close();
+            }
+            catch (Exception ex)
+            {
+                //todo log
+            }
+        }
+
+        public virtual bool SocketStatus => Connection?.Connected == true
+            && LastSocketIO.ElapsedMilliseconds < config.SocketConsideredDead
+            && Connection?.GetStream()?.CanRead == true
+            && Connection?.GetStream()?.CanWrite == true;
 
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
@@ -216,12 +233,13 @@ namespace DistCache.Common.NetworkManagement
                     {
                         try
                         {
-                            _tcp.Close();
+                            Connection?.Close();
                         }
                         catch (Exception ex)
                         {
                             //TODO LogMe
                         }
+                        Connection = null;
                     }
 
                     try

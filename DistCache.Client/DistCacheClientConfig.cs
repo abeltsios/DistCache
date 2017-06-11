@@ -15,7 +15,7 @@ namespace DistCache.Client
     {
         public DistCacheClientConfig()
         {
-            this.Servers = new List<string>() { "127.0.0.1:9856" };
+            this.Servers = new List<string>() { "127.0.0.1:5789" };
         }
 
         public IEnumerable<IPEndPoint> GetOrderedServerIpEndPoint()

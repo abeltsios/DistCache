@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DistCache.Server.Protocol.Messages
+namespace DistCache.Common.Protocol.Messages
 {
     public enum MessageTypeEnum
     {

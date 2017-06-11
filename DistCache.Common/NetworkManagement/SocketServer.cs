@@ -16,7 +16,6 @@ namespace DistCache.Common.NetworkManagement
         private readonly object _lockObject = new object();
         private TcpListener _socketListener = null;
         public event EventHandler<TcpClient> ConnectionAccepted;
-        private ConcurrentDictionary<Guid, TcpClient> client = new ConcurrentDictionary<Guid, TcpClient>();
 
         private event EventHandler<Exception> ServerSocketFail;
 
