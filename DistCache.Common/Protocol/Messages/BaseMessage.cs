@@ -4,9 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DistCache
+namespace DistCache.Server.Protocol.Messages
 {
-    public class Class1
+    public class BaseMessage
     {
+        public MessageTypeEnum MessageType { get; set; }
     }
 }
