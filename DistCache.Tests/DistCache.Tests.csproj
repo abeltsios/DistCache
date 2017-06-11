@@ -50,11 +50,16 @@
   <ItemGroup>
     <Compile Include="HandShakeTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ServerConfigTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\DistCache.Client\DistCache.Client.csproj">
+      <Project>{dd1f1baa-5f03-4ca1-892d-40641a060a7b}</Project>
+      <Name>DistCache.Client</Name>
+    </ProjectReference>
     <ProjectReference Include="..\DistCache.Common\DistCache.Common.csproj">
       <Project>{4d86ab21-6ba8-4fa0-888d-d7581c6afd14}</Project>
       <Name>DistCache.Common</Name>

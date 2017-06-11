@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistCache.Tests", "DistCach
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistCache.Common", "DistCache.Common\DistCache.Common.csproj", "{4D86AB21-6BA8-4FA0-888D-D7581C6AFD14}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistCache.Client", "DistCache.Client\DistCache.Client.csproj", "{DD1F1BAA-5F03-4CA1-892D-40641A060A7B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{4D86AB21-6BA8-4FA0-888D-D7581C6AFD14}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4D86AB21-6BA8-4FA0-888D-D7581C6AFD14}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4D86AB21-6BA8-4FA0-888D-D7581C6AFD14}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DD1F1BAA-5F03-4CA1-892D-40641A060A7B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DD1F1BAA-5F03-4CA1-892D-40641A060A7B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DD1F1BAA-5F03-4CA1-892D-40641A060A7B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DD1F1BAA-5F03-4CA1-892D-40641A060A7B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

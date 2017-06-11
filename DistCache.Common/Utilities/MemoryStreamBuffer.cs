@@ -11,7 +11,7 @@ namespace DistCache.Common.Utilities
 {
     public class MemoryStreamPool : IDisposable
     {
-        public const int MaxPool = 150;
+        public const int MaxMemoryStreamPoolSize = 100;
 
         public MemoryStream Stream { get; private set; }
 
@@ -37,7 +37,7 @@ namespace DistCache.Common.Utilities
 
         public static void ReturnToPool(MemoryStream toPool)
         {
-            if (SteamPool.Count < MaxPool && toPool.CanRead && toPool.CanSeek && toPool.CanWrite)
+            if (SteamPool.Count < MaxMemoryStreamPoolSize && toPool.CanRead && toPool.CanSeek && toPool.CanWrite)
             {
                 toPool.SetLength(0);
                 SteamPool.Enqueue(toPool);

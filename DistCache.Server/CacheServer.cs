@@ -15,12 +15,11 @@ namespace DistCache.Server
         private SocketServer _socketServer;
         private HashSet<IPEndPoint> _otherServers;
         public Guid ServerGuid { get; private set; } = Guid.NewGuid();
+
+
         public CacheServer(int port, IEnumerable<IPEndPoint> others) : this(new IPEndPoint(IPAddress.Any, port), others)
         {
         }
-
-
-
 
         public CacheServer(IPEndPoint bindEndPoint, IEnumerable<IPEndPoint> others)
         {
