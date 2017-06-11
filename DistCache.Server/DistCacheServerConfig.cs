@@ -11,22 +11,28 @@ namespace DistCache.Server
 {
     public class DistCacheServerConfig : DistCacheConfigBase
     {
+        public string InstanceEndPoint { get; protected set; }
 
         public DistCacheServerConfig() : base()
         {
-            this.Servers = new List<string>() { "0.0.0.0:9856" };
         }
 
         public IPEndPoint GetEndpointToBind()
         {
-            HashSet<IPAddress> addresses = GetHostIpAddresses();
-            addresses.Add(IPAddress.Any);
+            return ParseIPEndPoint(InstanceEndPoint).First();
+            //HashSet<IPAddress> addresses = GetHostIpAddresses();
+            //addresses.Add(IPAddress.Any);
 
-            HashSet<IPEndPoint> hs = new HashSet<IPEndPoint>(Servers.Select(ParseIPEndPoint));
-            return hs.Single(ep => addresses.Contains(ep.Address));
+            //HashSet<IPEndPoint> hs = new HashSet<IPEndPoint>(Servers.Select(ParseIPEndPoint));
+            //return hs.Single(ep => addresses.Contains(ep.Address));
         }
 
-      
-
+        public List<IPEndPoint> GetClusterAddresses(bool includeCurrent = false)
+        {
+            var ret = new HashSet<IPEndPoint>(Servers.SelectMany(ParseIPEndPoint));
+            if (!includeCurrent)
+                ret.Remove(GetEndpointToBind());
+            return ret.ToList();
+        }
     }
 }

@@ -22,8 +22,10 @@ namespace DistCache.Tests
             for (int i = 0; i < 10; ++i)
                 dic[Guid.NewGuid().ToString()] = Guid.NewGuid().ToString();
 
-            new CacheServer(5800, null);
 
+            var config = new DistCacheServerConfig();
+
+            var srv = new CacheServer(config);
             Thread.Sleep(TimeSpan.FromSeconds(1));
             var s = new TcpClient();
 

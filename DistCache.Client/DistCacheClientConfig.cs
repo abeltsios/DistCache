@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.Net;
 using System.Net.NetworkInformation;
 using DistCache.Common;
+using DistCache.Common.Utilities;
 
 namespace DistCache.Client
 {
@@ -21,9 +22,9 @@ namespace DistCache.Client
         {
             var hostIps = GetHostIpAddresses();
 
-            var local = Servers.Select(ParseIPEndPoint).FirstOrDefault(ipep => hostIps.Contains(ipep.Address));
-            var ls = Servers.Select(ParseIPEndPoint).ToList();
-            ls = ls.OrderBy(ipep => ipep == local ? Guid.Empty : Guid.NewGuid()).ToList();
+            var local = Servers.SelectMany(ParseIPEndPoint).FirstOrDefault(ipep => hostIps.Contains(ipep.Address));
+            var ls = Servers.SelectMany(ParseIPEndPoint).ToList();
+            ls = ls.OrderBy(ipep => ipep == local ? 0 : RandomProvider.Next(1,1<<10)).ToList();
             return ls;
         }
     }

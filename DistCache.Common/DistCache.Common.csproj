@@ -44,9 +44,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Utilities\BsonUtilities.cs" />
+    <Compile Include="Utilities\ByteArrayBufferPool.cs" />
     <Compile Include="Utilities\CompressionUtilitities.cs" />
     <Compile Include="ConfigProvider.cs" />
-    <Compile Include="Utilities\MemoryStreamBuffer.cs" />
+    <Compile Include="Utilities\MemoryStreamPool.cs" />
+    <Compile Include="Utilities\RandomProvider.cs" />
+    <Compile Include="Utilities\ReusableObjectsPool.cs" />
     <Compile Include="NetworkManagement\SocketServer.cs" />
     <Compile Include="NetworkManagement\SocketHandler.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

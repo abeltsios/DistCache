@@ -9,61 +9,64 @@ using System.IO.Compression;
 
 namespace DistCache.Common.Utilities
 {
-    public class MemoryStreamPool : IDisposable
+    public class ReusableObjectsPool<T> : IDisposable where T : class
     {
-        public const int MaxMemoryStreamPoolSize = 100;
+        protected delegate T PoolableObjectFactory();
 
-        public MemoryStream Stream { get; private set; }
+        protected const int MaxMemoryStreamPoolSize = 100;
 
-        public MemoryStreamPool()
+        protected T FromPool { get; private set; }
+
+        protected ReusableObjectsPool(PoolableObjectFactory factory = null)
         {
-            this.Stream = GetFromPool();
+            this.FromPool = GetFromPool(factory);
         }
 
+        private static ConcurrentQueue<T> ObjectPool = new ConcurrentQueue<T>();
 
-        private static ConcurrentQueue<MemoryStream> SteamPool = new ConcurrentQueue<MemoryStream>();
-
-        public static MemoryStream GetFromPool()
+        protected static T GetFromPool(PoolableObjectFactory factory = null)
         {
-            if (SteamPool.TryDequeue(out MemoryStream result))
+            if (ObjectPool.TryDequeue(out T result))
             {
                 return result;
             }
             else
             {
-                return new MemoryStream();
+                if (factory == null)
+                {
+                    return default(T);
+                }
+                return factory.Invoke();
             }
         }
 
-        public static void ReturnToPool(MemoryStream toPool)
+        protected static void ReturnToPool(T toPool)
         {
-            if (SteamPool.Count < MaxMemoryStreamPoolSize && toPool.CanRead && toPool.CanSeek && toPool.CanWrite)
+            if (ObjectPool.Count < MaxMemoryStreamPoolSize)
             {
-                toPool.SetLength(0);
-                SteamPool.Enqueue(toPool);
+                ObjectPool.Enqueue(toPool);
             }
-
         }
 
         #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
+        protected bool DisposedValue { get; private set; } = false; // To detect redundant calls
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (!DisposedValue)
             {
                 if (disposing)
                 {
                     // TODO: dispose managed state (managed objects).
-                    var reference = this.Stream;
-                    this.Stream = null;
+                    var reference = this.FromPool;
+                    this.FromPool = null;
                     ReturnToPool(reference);
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
 
-                disposedValue = true;
+                DisposedValue = true;
             }
         }
 

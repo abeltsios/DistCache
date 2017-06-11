@@ -162,7 +162,7 @@ namespace DistCache.Common.NetworkManagement
                 }
             }
         }
-        
+
         #endregion
 
         /// <summary>
@@ -194,7 +194,7 @@ namespace DistCache.Common.NetworkManagement
             foreach (var k in o)
             {
 
-                Console.WriteLine ($"{depth}{k.Key}:{k.Value}");
+                Console.WriteLine($"{depth}{k.Key}:{k.Value}");
             }
         }
 

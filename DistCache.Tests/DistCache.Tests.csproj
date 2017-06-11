@@ -51,6 +51,7 @@
     <Compile Include="HandShakeTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ServerConfigTests.cs" />
+    <Compile Include="UtilitiesTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
