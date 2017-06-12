@@ -15,6 +15,34 @@ namespace DistCache.Common.NetworkManagement
 {
     public class SocketHandler : IDisposable
     {
+        public static TcpClient CreateSocket(IPEndPoint endpoint, DistCacheConfigBase config)
+        {
+            TcpClient Connection = new TcpClient();
+
+            if (Connection.ReceiveBufferSize != 1 << 15)
+                Connection.ReceiveBufferSize = 1 << 15;
+
+            if (Connection.SendBufferSize != 1 << 15)
+            {
+                Connection.SendBufferSize = 1 << 15;
+            }
+            if (Connection.ReceiveTimeout != config.SocketReadTimeout)
+            {
+                Connection.ReceiveTimeout = config.SocketReadTimeout;
+            }
+
+            if (Connection.SendTimeout != config.SocketWriteTimeout)
+            {
+                Connection.SendTimeout = config.SocketWriteTimeout;
+            }
+            if (Connection.Client.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive) as int? == 1)
+            {
+                Connection.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+            }
+            Connection.Connect(endpoint);
+
+            return Connection;
+        }
         internal class MessageTriplete
         {
             public bool Compressed { get; set; }
@@ -37,11 +65,10 @@ namespace DistCache.Common.NetworkManagement
         {
             this.config = config;
             this.Connection = tcp;
-            Connection.ReceiveBufferSize = 1 << 15;
-            Connection.SendBufferSize = 1 << 15;
-            Connection.ReceiveTimeout = this.config.SocketReadTimeout;
-            Connection.SendTimeout = this.config.SocketWriteTimeout;
-            Connection.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+        }
+
+        public void Start()
+        {
             new Thread(ReadData).Start();
             new Thread(SendData).Start();
         }
@@ -56,6 +83,10 @@ namespace DistCache.Common.NetworkManagement
             if (SocketStatus)
             {
                 this._messagesToSend.Enqueue(new MessageTriplete() { Compressed = isCompressed, Message = b, EventWait = eventWait });
+            }
+            else
+            {
+                throw new Exception("send msg while socket dead");
             }
         }
 
@@ -88,8 +119,7 @@ namespace DistCache.Common.NetworkManagement
                         }
                         catch (Exception ex)
                         {
-                            if (Connection != null)
-                                this.ConnectionError?.Invoke(this, this);
+                            this.ConnectionError?.Invoke(this, this);
                             return;
                         }
                         finally
@@ -101,18 +131,17 @@ namespace DistCache.Common.NetworkManagement
                 if (!_messagesToSend.Any())
                     Thread.Sleep(1);
             }
-
-
-
+            Console.WriteLine($"{this.GetType().FullName} :: read data returned ");
         }
 
         private void ReadData()
         {
-            using (var sr = new BinaryReader(Connection.GetStream(), Encoding.UTF8))
+
+            try
             {
-                try
+                while (SocketStatus)
                 {
-                    while (SocketStatus)
+                    using (var sr = new BinaryReader(Connection.GetStream(), Encoding.UTF8, true))
                     {
                         int? messageLength = new int?();
 
@@ -159,10 +188,14 @@ namespace DistCache.Common.NetworkManagement
                         Thread.Sleep(1);
                     }
                 }
-                catch (Exception ex)
-                {
-                    this.ConnectionError?.Invoke(this, this);
-                }
+            }
+            catch (Exception ex)
+            {
+                this.ConnectionError?.Invoke(this, this);
+            }
+            finally
+            {
+                Console.WriteLine($"{this.GetType().FullName} :: read data returned ");
             }
         }
 
@@ -222,6 +255,14 @@ namespace DistCache.Common.NetworkManagement
 
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
+
+
+        public TcpClient PassSocket()
+        {
+            var c = this.Connection;
+            this.Connection = null;
+            return c;
+        }
 
         protected virtual void Dispose(bool disposing)
         {

@@ -26,11 +26,7 @@ namespace DistCache.Client
             {
                 try
                 {
-                    tcp = new TcpClient()
-                    {
-                        SendTimeout = 1000
-                    };
-                    tcp.Connect(toTry);
+                    tcp = SocketHandler.CreateSocket(toTry, config);
                 }
                 catch (Exception ex)
                 {
@@ -51,11 +47,12 @@ namespace DistCache.Client
 
         private DistCacheClient(TcpClient tcp, DistCacheClientConfig config)
         {
-            this._tcp = tcp;
             bool res;
             using (var hs = new HandShakeClientHandler(tcp, config, this.ClientId))
             {
                 res = hs.VerifyConnection();
+                this._tcp = hs.PassSocket();
+
             }
             if (!res)
             {

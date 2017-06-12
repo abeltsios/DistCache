@@ -27,26 +27,15 @@ namespace DistCache.Tests
 
                 Password = pass
             };
-            int i = 0;
-            var srv = new CacheServer(serverConfig);
-            var ls = new List<DistCacheClient>();
-            while (++i < 100)
-            {
-                var client = DistCacheClient.Create(new DistCacheClientConfig() { Password = pass });
-            }
-            Thread.Sleep(1000);
-            Assert.IsTrue(srv.ConnectedClientsCount == 100);
-            foreach (var c in ls)
-            {
-                try
-                {
-                    c.Dispose();
-                }
-                catch (Exception ex)
-                {
 
-                }
+            using (var srv = new CacheServer(serverConfig))
+            {
+                var ls = new List<DistCacheClient>();
+                var client = DistCacheClient.Create(new DistCacheClientConfig() { Password = pass });
+                Thread.Sleep(1000);
+                Assert.IsTrue(srv.ConnectedClientsCount == 1);
             }
+
         }
     }
 }

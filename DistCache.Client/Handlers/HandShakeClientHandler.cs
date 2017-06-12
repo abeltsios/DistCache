@@ -16,15 +16,11 @@ namespace DistCache.Client.Handlers
     {
         private ManualResetEventSlim waitForLogin = new ManualResetEventSlim(false);
         private MessageTypeEnum? state = null;
+        private Guid clientUID;
         public HandShakeClientHandler(TcpClient tcp, DistCacheConfigBase config,Guid clientUID) : base(tcp, config)
         {
-            
-            SendMessage(new HandShakeRequest()
-            {
-                AuthPassword = config.Password,
-                MessageType = MessageTypeEnum.ClientAuthRequest,
-                RegisteredGuid = clientUID
-            });
+            this.clientUID = clientUID;
+            Start();
         }
 
         protected override bool HandleMessages(byte[] message)
@@ -41,7 +37,14 @@ namespace DistCache.Client.Handlers
 
         public bool VerifyConnection()
         {
-            if(waitForLogin.Wait(config.SocketReadTimeout) && state == MessageTypeEnum.AuthRequestOk)
+            SendMessage(new HandShakeRequest()
+            {
+                AuthPassword = config.Password,
+                MessageType = MessageTypeEnum.ClientAuthRequest,
+                RegisteredGuid = clientUID
+            });
+
+            if (waitForLogin.Wait(config.SocketReadTimeout) && state == MessageTypeEnum.AuthRequestOk)
             {
                 return true;
             }

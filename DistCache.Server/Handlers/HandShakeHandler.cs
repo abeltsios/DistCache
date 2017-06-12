@@ -33,6 +33,7 @@ namespace DistCache.Server.Protocol.Handlers
         {
             this.TemporaryID = tempGuid;
             this._server = server;
+            Start();
         }
 
         protected override bool HandleMessages(byte[] message)
@@ -80,6 +81,7 @@ namespace DistCache.Server.Protocol.Handlers
             }
             return false;
         }
+
 
     }
 }
