@@ -264,42 +264,47 @@ namespace DistCache.Common.NetworkManagement
             return c;
         }
 
-        protected virtual void Dispose(bool disposing)
+        protected void Dispose(bool disposing)
         {
             if (!disposedValue)
             {
                 if (disposing)
                 {
-                    if (keepHandlingMessages)
-                    {
-                        try
-                        {
-                            Connection?.Close();
-                        }
-                        catch (Exception ex)
-                        {
-                            //TODO LogMe
-                        }
-                        Connection = null;
-                    }
-
-                    try
-                    {
-                        this._memoryStream.Dispose();
-                    }
-                    catch (Exception ex)
-                    {
-                        //TODO LogMe
-                    }
-                    this._memoryStream = null;
-                    this._messagesToSend = null;
-                    // TODO: dispose managed state (managed objects).
+                    InnerDispose();
                 }
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
 
                 disposedValue = true;
             }
+        }
+
+        protected virtual void InnerDispose()
+        {
+            if (keepHandlingMessages)
+            {
+                try
+                {
+                    Connection?.Close();
+                }
+                catch (Exception ex)
+                {
+                    //TODO LogMe
+                }
+                Connection = null;
+            }
+
+            try
+            {
+                this._memoryStream.Dispose();
+            }
+            catch (Exception ex)
+            {
+                //TODO LogMe
+            }
+            this._memoryStream = null;
+            this._messagesToSend = null;
+            // TODO: dispose managed state (managed objects).
         }
 
         // TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.

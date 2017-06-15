@@ -50,5 +50,11 @@ namespace DistCache.Client.Handlers
             }
             return false;
         }
+
+        protected override void InnerDispose()
+        {
+            base.InnerDispose();
+            waitForLogin.Dispose();
+        }
     }
 }

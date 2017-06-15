@@ -47,6 +47,7 @@
     <Compile Include="Utilities\ByteArrayBufferPool.cs" />
     <Compile Include="Utilities\CompressionUtilitities.cs" />
     <Compile Include="ConfigProvider.cs" />
+    <Compile Include="Utilities\DistCacheThreadPool.cs" />
     <Compile Include="Utilities\MemoryStreamPool.cs" />
     <Compile Include="Utilities\RandomProvider.cs" />
     <Compile Include="Utilities\ReusableObjectsPool.cs" />
