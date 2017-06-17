@@ -17,11 +17,12 @@ namespace DistCache.Server
         private HashSet<IPEndPoint> _otherServers;
         public Guid ServerGuid { get; private set; } = Guid.NewGuid();
         public DistCacheServerConfig Config { get; private set; }
-        private ConcurrentDictionary<Guid, HandShakeServerHandler> authPendingClients = new ConcurrentDictionary<Guid, HandShakeServerHandler>();
+        private ConcurrentDictionary<Guid, ServerHandShakeHandler> authPendingClients = new ConcurrentDictionary<Guid, ServerHandShakeHandler>();
         private ConcurrentDictionary<Guid, SocketHandler> Clients = new ConcurrentDictionary<Guid, SocketHandler>();
         private ConcurrentDictionary<Guid, SocketHandler> Servers = new ConcurrentDictionary<Guid, SocketHandler>();
         public int ConnectedClientsCount => Clients.Count;
-        public int ConnectedServersCount => Clients.Count;
+        public int PendingClientsCount => authPendingClients.Count;
+        public int ConnectedServersCount => Servers.Count;
         public int ConnectedTotalCount => Clients.Count + Servers.Count;
 
         public void Shutdown()
@@ -50,7 +51,6 @@ namespace DistCache.Server
                 {
                 }
             }
-
         }
 
         private Action maintenaceActions;
@@ -60,7 +60,7 @@ namespace DistCache.Server
             this.Config = config;
             this._socketServer = new SocketServer(this.Config.GetEndpointToBind(), restartOnFailure);
             this._otherServers = new HashSet<IPEndPoint>(this.Config.GetClusterAddresses());
-            this._socketServer.Start();
+            this._socketServer.AcceptSocket();
             this._socketServer.ConnectionAccepted += ConnectionAccepted;
 
             maintenaceActions += () =>
@@ -72,7 +72,7 @@ namespace DistCache.Server
                         if (!kvp.Value.SocketStatus)
                         {
                             kvp.Value.Shutdown();
-                            if (authPendingClients.TryRemove(kvp.Key, out HandShakeServerHandler handler))
+                            if (authPendingClients.TryRemove(kvp.Key, out ServerHandShakeHandler handler))
                             {
                                 handler.Dispose();
                             }
@@ -89,12 +89,13 @@ namespace DistCache.Server
         private void ConnectionAccepted(object sender, TcpClient socket)
         {
             var tempGuid = Guid.NewGuid();
-            authPendingClients[tempGuid] = new HandShakeServerHandler(socket, this, tempGuid);
+            authPendingClients[tempGuid] = new ServerHandShakeHandler(socket, this, tempGuid);
+            authPendingClients[tempGuid].Start();
         }
 
         public void ClientConnected(Guid registeredGuid, Guid tempGuid)
         {
-            if (authPendingClients.TryRemove(tempGuid, out HandShakeServerHandler client))
+            if (authPendingClients.TryRemove(tempGuid, out ServerHandShakeHandler client))
             {
                 //this is a new valid client
                 Clients.TryAdd(registeredGuid, new SocketHandler(client.PassSocket(), Config));
@@ -106,9 +107,9 @@ namespace DistCache.Server
             }
         }
 
-        public void ServerConnected(TcpClient newclient, Guid registeredGuid, Guid tempGuid)
+        public void ServerConnected(Guid registeredGuid, Guid tempGuid)
         {
-            if (authPendingClients.TryRemove(tempGuid, out HandShakeServerHandler client))
+            if (authPendingClients.TryRemove(tempGuid, out ServerHandShakeHandler client))
             {
                 //this is a new valid client
             }
@@ -118,7 +119,7 @@ namespace DistCache.Server
             }
         }
 
-        internal void UnknownConnectionFailed(TcpClient tcp, Guid? temporaryID)
+        internal void ConnectionFailed(TcpClient tcp, Guid? temporaryID)
         {
             throw new NotImplementedException();
         }

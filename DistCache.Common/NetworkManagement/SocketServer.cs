@@ -15,106 +15,67 @@ namespace DistCache.Common.NetworkManagement
         private readonly IPEndPoint _localEndPoint;
         private readonly object _lockObject = new object();
         private TcpListener _socketListener = null;
+        private readonly bool _restartOnSocketFailure;
         public event EventHandler<TcpClient> ConnectionAccepted;
 
         private event EventHandler<Exception> ServerSocketFail;
 
+        private bool exceptionOccured = false;
+
         public SocketServer(IPEndPoint bindTo, bool restartOnSocketFailure = true)
         {
+            this._restartOnSocketFailure = restartOnSocketFailure;
             this._localEndPoint = new IPEndPoint(bindTo.Address, bindTo.Port);
-            if (restartOnSocketFailure)
-            {
-                ServerSocketFail += OnServerSocketFailed;
-            }
+            this._socketListener = new TcpListener(_localEndPoint);
+            this._socketListener.Start(300);
+            ServerSocketFail += OnServerSocketFailed;
         }
 
         private void OnServerSocketFailed(object sender, Exception e)
         {
             Stop();
-            Start();
+            if (_restartOnSocketFailure)
+            {
+                AcceptSocket();
+            }
         }
 
-        public void Start()
+        public void AcceptSocket()
         {
-            if (this._socketListener == null)
+            if (this._socketListener != null)
             {
-                lock (_lockObject)
+                this._socketListener.AcceptTcpClientAsync().ContinueWith((task) =>
                 {
-                    this._socketListener = new TcpListener(_localEndPoint);
-                    this._socketListener.Start(50);
-                    new Thread(AcceptorThread).Start();
-                }
+                    if (task.IsFaulted)
+                    {
+                        exceptionOccured = true;
+                        ServerSocketFail.Invoke(task, task.Exception);
+                    }
+                    else
+                    {
+                        ConnectionAccepted?.Invoke(this, task.Result);
+                        AcceptSocket();
+                    }
+                });
             }
-            else throw new Exception("already inited");
         }
 
         public void Stop()
         {
-            lock (_lockObject)
+            try
             {
-                try
-                {
-                    _socketListener?.Stop();
-                }
-                catch (Exception ex)
-                {
-
-                }
-                _socketListener = null;
+                _socketListener?.Stop();
             }
+            catch (Exception ex)
+            {
+
+            }
+            _socketListener = null;
         }
 
-        private void AcceptorThread()
-        {
-            bool exceptionOccured = false;
-            while (!exceptionOccured && _socketListener?.Server?.IsBound == true)
-            {
-                try
-                {
-                    TcpClient acceptedSocket = this._socketListener.AcceptTcpClient();
-                    ConnectionAccepted?.Invoke(this, acceptedSocket);
-                }
-                catch (Exception ex)
-                {
-                    exceptionOccured = true;
-                    ServerSocketFail?.Invoke(this, ex);
-                }
-            }
-        }
-
-        #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    // TODO: dispose managed state (managed objects).
-                    Stop();
-                }
-
-                // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
-                // TODO: set large fields to null.
-                disposedValue = true;
-            }
-        }
-
-        // TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
-        // ~SimpleSocketServer() {
-        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-        //   Dispose(false);
-        // }
-
-        // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
-            // TODO: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
+            Stop();
         }
-        #endregion
     }
 }

@@ -15,8 +15,8 @@ namespace DistCache.Common
         {
             return string.Join("", new int[] { 1, 2, 3, 4, 5, 6 }.Select(i => Guid.NewGuid().ToString()).ToArray());
         }
-        public int SocketReadTimeout { get; set; } = 20000;
-        public int SocketWriteTimeout { get; set; } = 20000;
+        public int SocketReadTimeout { get; set; } = 60000;
+        public int SocketWriteTimeout { get; set; } = 60000;
         public int SocketConsideredDead { get; set; } = 60000;
         public string Password { get; set; }
         public List<string> Servers { get; set; } = new List<string>();

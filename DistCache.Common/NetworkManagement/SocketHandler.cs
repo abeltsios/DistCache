@@ -52,7 +52,7 @@ namespace DistCache.Common.NetworkManagement
             public ManualResetEventSlim EventWait { get; set; }
         }
 
-        public TcpClient Connection { get; protected set; }
+        private TcpClient _connection;
         private ConcurrentQueue<MessageTriplete> _messagesToSend = new ConcurrentQueue<MessageTriplete>();
 
         private MemoryStreamPool _memoryStream = new MemoryStreamPool();
@@ -64,7 +64,7 @@ namespace DistCache.Common.NetworkManagement
         public SocketHandler(TcpClient tcp, DistCacheConfigBase config)
         {
             this.config = config;
-            this.Connection = tcp;
+            this._connection = tcp;
         }
 
         public void Start()
@@ -114,7 +114,7 @@ namespace DistCache.Common.NetworkManagement
                         }
                         try
                         {
-                            Connection.GetStream().Write(msh.Stream.ToArray(), 0, (int)msh.Stream.Length);
+                            _connection.GetStream().Write(msh.Stream.ToArray(), 0, (int)msh.Stream.Length);
                             LastSocketIO.Restart();
                         }
                         catch (Exception ex)
@@ -136,32 +136,31 @@ namespace DistCache.Common.NetworkManagement
 
         private void ReadData()
         {
-
             try
             {
                 while (SocketStatus)
                 {
-                    using (var sr = new BinaryReader(Connection.GetStream(), Encoding.UTF8, true))
+                    using (var sr = new BinaryReader(_connection.GetStream(), Encoding.UTF8, true))
                     {
                         int? messageLength = new int?();
 
-                        while (Connection.Connected && Connection.GetStream().CanRead && Connection.Available > 0)
+                        while (_connection.Connected && _connection.GetStream().CanRead && _connection.Available > 0)
                         {
                             LastSocketIO.Restart();
-                            if (!messageLength.HasValue && Connection.Available > 4)
+                            if (!messageLength.HasValue && _connection.Available > 4)
                             {
                                 messageLength = sr.ReadInt32();
                             }
                             else if (messageLength.HasValue)
                             {
                                 int toRead;
-                                if (Connection.Available > (messageLength.Value - _memoryStream.Stream.Position))
+                                if (_connection.Available > (messageLength.Value - _memoryStream.Stream.Position))
                                 {
                                     toRead = (int)(messageLength.Value - _memoryStream.Stream.Position);
                                 }
                                 else
                                 {
-                                    toRead = Connection.Available;
+                                    toRead = _connection.Available;
                                 }
 
                                 _memoryStream.Stream.Write(sr.ReadBytes(toRead), 0, toRead);
@@ -238,9 +237,9 @@ namespace DistCache.Common.NetworkManagement
         {
             try
             {
-                var cp = Connection;
-                Connection = null;
-                cp.Close();
+                var cp = _connection;
+                _connection = null;
+                cp?.Close();
             }
             catch (Exception ex)
             {
@@ -248,50 +247,34 @@ namespace DistCache.Common.NetworkManagement
             }
         }
 
-        public virtual bool SocketStatus => Connection?.Connected == true
+        public virtual bool SocketStatus => _connection?.Connected == true
             && LastSocketIO.ElapsedMilliseconds < config.SocketConsideredDead
-            && Connection?.GetStream()?.CanRead == true
-            && Connection?.GetStream()?.CanWrite == true;
+            && _connection?.GetStream()?.CanRead == true
+            && _connection?.GetStream()?.CanWrite == true;
 
-        #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
 
 
         public TcpClient PassSocket()
         {
-            var c = this.Connection;
-            this.Connection = null;
+            var c = this._connection;
+            this._connection = null;
             return c;
         }
 
-        protected void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    InnerDispose();
-                }
-                // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
-                // TODO: set large fields to null.
-
-                disposedValue = true;
-            }
-        }
-
-        protected virtual void InnerDispose()
+      
+        public virtual void Dispose()
         {
             if (keepHandlingMessages)
             {
                 try
                 {
-                    Connection?.Close();
+                    _connection?.Close();
                 }
                 catch (Exception ex)
                 {
                     //TODO LogMe
                 }
-                Connection = null;
+                _connection = null;
             }
 
             try
@@ -307,20 +290,5 @@ namespace DistCache.Common.NetworkManagement
             // TODO: dispose managed state (managed objects).
         }
 
-        // TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
-        // ~SocketHandler() {
-        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-        //   Dispose(false);
-        // }
-
-        // This code added to correctly implement the disposable pattern.
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
-            // TODO: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
-        }
-        #endregion
     }
 }

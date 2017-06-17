@@ -18,7 +18,7 @@ namespace DistCache.Tests
         {
             int sleepTime = 300;
             int jobCount = 1500;
-            DistCacheThreadPool.MaxThreadCount = 500;
+            DistCacheExecutor.MaxThreadCount = 500;
 
             Stopwatch sw = Stopwatch.StartNew();
 
@@ -27,7 +27,7 @@ namespace DistCache.Tests
             {
                 int x = i;
                 var s = new ManualResetEventSlim(false);
-                DistCacheThreadPool.QueueJob(() =>
+                DistCacheExecutor.QueueJob(() =>
                 {
                     Thread.Sleep(sleepTime);
                 }, s);
@@ -40,8 +40,10 @@ namespace DistCache.Tests
             }
             sw.Stop();
             var l = sw.ElapsedMilliseconds;
-            var res = decimal.Divide(sleepTime * jobCount, DistCacheThreadPool.MaxThreadCount);
+            var res = decimal.Divide(sleepTime * jobCount, DistCacheExecutor.MaxThreadCount);
             Assert.IsTrue(l < res * 1.1m);
+            DistCacheExecutor.MaxThreadCount = 0;
+
         }
     }
 }

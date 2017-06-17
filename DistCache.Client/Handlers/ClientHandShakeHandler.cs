@@ -12,12 +12,12 @@ using DistCache.Common.Protocol.Messages;
 
 namespace DistCache.Client.Handlers
 {
-    public class HandShakeClientHandler : SocketHandler
+    public class ClientHandShakeHandler : SocketHandler
     {
         private ManualResetEventSlim waitForLogin = new ManualResetEventSlim(false);
         private MessageTypeEnum? state = null;
         private Guid clientUID;
-        public HandShakeClientHandler(TcpClient tcp, DistCacheConfigBase config,Guid clientUID) : base(tcp, config)
+        public ClientHandShakeHandler(TcpClient tcp, DistCacheConfigBase config,Guid clientUID) : base(tcp, config)
         {
             this.clientUID = clientUID;
             Start();
@@ -27,7 +27,7 @@ namespace DistCache.Client.Handlers
         {
             var ans = BsonUtilities.Deserialise<HandShakeOutcome>(message);
             this.state = ans.MessageType;
-            if( state == MessageTypeEnum.AuthRequestOk)
+            if( state != MessageTypeEnum.AuthRequestOk)
             {
                 Shutdown();
             }
@@ -37,24 +37,25 @@ namespace DistCache.Client.Handlers
 
         public bool VerifyConnection()
         {
-            SendMessage(new HandShakeRequest()
+            try
             {
-                AuthPassword = config.Password,
-                MessageType = MessageTypeEnum.ClientAuthRequest,
-                RegisteredGuid = clientUID
-            });
+                SendMessage(new HandShakeRequest()
+                {
+                    AuthPassword = config.Password,
+                    MessageType = MessageTypeEnum.ClientAuthRequest,
+                    RegisteredGuid = clientUID
+                });
 
-            if (waitForLogin.Wait(config.SocketReadTimeout) && state == MessageTypeEnum.AuthRequestOk)
-            {
-                return true;
+                if (waitForLogin.Wait(config.SocketReadTimeout) && state == MessageTypeEnum.AuthRequestOk)
+                {
+                    return true;
+                }
+                return false;
             }
-            return false;
-        }
-
-        protected override void InnerDispose()
-        {
-            base.InnerDispose();
-            waitForLogin.Dispose();
+            finally
+            {
+                waitForLogin.Dispose();
+            }
         }
     }
 }

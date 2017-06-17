@@ -9,8 +9,9 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>DistCache.Common</RootNamespace>
     <AssemblyName>DistCache.Common</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -48,6 +49,7 @@
     <Compile Include="Utilities\CompressionUtilitities.cs" />
     <Compile Include="ConfigProvider.cs" />
     <Compile Include="Utilities\DistCacheThreadPool.cs" />
+    <Compile Include="Utilities\Executor.cs" />
     <Compile Include="Utilities\MemoryStreamPool.cs" />
     <Compile Include="Utilities\RandomProvider.cs" />
     <Compile Include="Utilities\ReusableObjectsPool.cs" />

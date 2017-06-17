@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace DistCache.Common.Utilities
 {
-    public static class DistCacheThreadPool
+    public static class DistCacheExecutor
     {
         public static int MaxThreadCount
         {
@@ -22,7 +22,7 @@ namespace DistCache.Common.Utilities
         private static int _maxThreadCount;
 
         private static DistCacheThreadPoolInternal pool = new DistCacheThreadPoolInternal();
-        static DistCacheThreadPool()
+        static DistCacheExecutor()
         {
 
         }
@@ -39,6 +39,7 @@ namespace DistCache.Common.Utilities
 
         internal Action Action;
     }
+
     //todo disposable clear all mres
     //set to dispose
     internal class DistCacheThreadPoolInternal : IDisposable
@@ -51,12 +52,19 @@ namespace DistCache.Common.Utilities
         private long _threadCount = 0;
         internal DistCacheThreadPoolInternal()
         {
-            EnsureThreads(DistCacheThreadPool.MaxThreadCount);
+            EnsureThreads(DistCacheExecutor.MaxThreadCount);
         }
 
         internal void EnsureThreads(int maxThreadCount)
         {
             while (CreateThread()) { }
+            while (Interlocked.Read(ref _threadCount) < DistCacheExecutor.MaxThreadCount)
+            {
+                if(ThreadSignalQueue.TryDequeue(out ManualResetEventSlim mr))
+                {
+                    mr.Set();
+                }
+            }
         }
 
         internal void Enqueue(DistCacheThreadPoolJob job)
@@ -70,10 +78,13 @@ namespace DistCache.Common.Utilities
 
         private bool CreateThread()
         {
-            if (Interlocked.Read(ref _threadCount) < DistCacheThreadPool.MaxThreadCount)
+            if (Interlocked.Read(ref _threadCount) < DistCacheExecutor.MaxThreadCount)
             {
                 ManualResetEventSlim mres = new ManualResetEventSlim(true);
-                new Thread(JobStuff).Start(mres);
+
+                var t = new Thread(JobStuff);
+                Interlocked.Increment(ref _threadCount);
+                t.Start(mres);
                 return true;
             }
             else
@@ -84,28 +95,46 @@ namespace DistCache.Common.Utilities
 
         private void JobStuff(object o)
         {
-            ManualResetEventSlim mres = o as ManualResetEventSlim;
-            Interlocked.Increment(ref _threadCount);
-            while (Interlocked.Read(ref _threadCount) <= DistCacheThreadPool.MaxThreadCount)
+            using (ManualResetEventSlim mres = o as ManualResetEventSlim)
             {
-                mres.Wait();
 
-                while (JobQueue.TryDequeue(out DistCacheThreadPoolJob job))
+                while (Interlocked.Read(ref _threadCount) <= DistCacheExecutor.MaxThreadCount)
                 {
-                    job.Action.Invoke();
-                    job?.ResetEvent?.Set();
-                }
+                    try
+                    {
+                        mres.Wait();
+                    }
+                    catch (Exception)
+                    {
+                        return;
+                    }
 
-                mres.Reset();
-                ThreadSignalQueue.Enqueue(mres);
+                    while (JobQueue.TryDequeue(out DistCacheThreadPoolJob job))
+                    {
+                        try
+                        {
+                            job.Action.Invoke();
+                        }
+                        catch (Exception ex)
+                        {
+                            //todo log
+                        }
+                        finally
+                        {
+                            job?.ResetEvent?.Set();
+                        }
+                    }
+
+                    mres.Reset();
+                    ThreadSignalQueue.Enqueue(mres);
+                }
             }
-            mres.Dispose();
             Interlocked.Decrement(ref _threadCount);
         }
 
         public void Dispose()
         {
-            DistCacheThreadPool.MaxThreadCount = 0;
+            DistCacheExecutor.MaxThreadCount = 0;
             while (JobQueue.Any())
             {
                 Thread.Sleep(10);

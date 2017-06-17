@@ -20,6 +20,7 @@ namespace DistCache.Tests
         public void TestClientConeectionIpEndpoint()
         {
             var o = new DistCacheClientConfig();
+            o.Servers.Clear();
             o.Servers.Add("123.123.123.4:123");
 
             Assert.IsNotNull(o.GetOrderedServerIpEndPoint());

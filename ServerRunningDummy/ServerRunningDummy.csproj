@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{4D93F94B-F30F-47F2-8F4F-425B6CEB1A9C}</ProjectGuid>
-    <OutputType>Library</OutputType>
+    <ProjectGuid>{21798D7D-1DD4-4D5E-8DED-69B58CB89066}</ProjectGuid>
+    <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>DistCache</RootNamespace>
-    <AssemblyName>DistCache</AssemblyName>
+    <RootNamespace>ServerRunningDummy</RootNamespace>
+    <AssemblyName>ServerRunningDummy</AssemblyName>
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
@@ -30,6 +30,9 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject>ServerRunningDummy.MainApp</StartupObject>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -41,16 +44,25 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CacheServer.cs" />
-    <Compile Include="DistCacheServerConfig.cs" />
-    <Compile Include="Handlers\ServerHandShakeHandler.cs" />
+    <Compile Include="Class1.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\DistCache.Client\DistCache.Client.csproj">
+      <Project>{dd1f1baa-5f03-4ca1-892d-40641a060a7b}</Project>
+      <Name>DistCache.Client</Name>
+    </ProjectReference>
     <ProjectReference Include="..\DistCache.Common\DistCache.Common.csproj">
       <Project>{4d86ab21-6ba8-4fa0-888d-d7581c6afd14}</Project>
       <Name>DistCache.Common</Name>
     </ProjectReference>
+    <ProjectReference Include="..\DistCache.Server\DistCache.Server.csproj">
+      <Project>{4d93f94b-f30f-47f2-8f4f-425b6ceb1a9c}</Project>
+      <Name>DistCache.Server</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -48,7 +48,7 @@ namespace DistCache.Client
         private DistCacheClient(TcpClient tcp, DistCacheClientConfig config)
         {
             bool res;
-            using (var hs = new HandShakeClientHandler(tcp, config, this.ClientId))
+            using (var hs = new ClientHandShakeHandler(tcp, config, this.ClientId))
             {
                 res = hs.VerifyConnection();
                 this._tcp = hs.PassSocket();
@@ -61,44 +61,18 @@ namespace DistCache.Client
         }
 
         #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
         private TcpClient _tcp;
 
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    try
-                    {
-                        _tcp.Close();
-                    }
-                    catch (Exception)
-                    {
-                    }
-                }
-
-                // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
-                // TODO: set large fields to null.
-
-                disposedValue = true;
-            }
-        }
-
-        // TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
-        // ~DistCacheClient() {
-        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-        //   Dispose(false);
-        // }
-
-        // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
-            // TODO: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
+            try
+            {
+                _tcp.Close();
+            }
+            catch (Exception)
+            {
+            }
+            _tcp = null;
         }
         #endregion
     }

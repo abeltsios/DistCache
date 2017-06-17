@@ -13,9 +13,11 @@ namespace DistCache.Common.Utilities
     {
         protected delegate T PoolableObjectFactory();
 
-        protected const int MaxMemoryStreamPoolSize = 100;
+        public static int MaxPoolSize { get; set; } = 100;
 
         protected T FromPool { get; private set; }
+
+        private static readonly bool ShouldDispose = (typeof(T) is IDisposable);
 
         protected ReusableObjectsPool(PoolableObjectFactory factory = null)
         {
@@ -42,47 +44,23 @@ namespace DistCache.Common.Utilities
 
         protected static void ReturnToPool(T toPool)
         {
-            if (ObjectPool.Count < MaxMemoryStreamPoolSize)
+            if (ObjectPool.Count < MaxPoolSize)
             {
                 ObjectPool.Enqueue(toPool);
+            }
+            else if (ShouldDispose)
+            {
+                (toPool as IDisposable)?.Dispose();
             }
         }
 
         #region IDisposable Support
-        protected bool DisposedValue { get; private set; } = false; // To detect redundant calls
 
-        protected virtual void Dispose(bool disposing)
+        public virtual void Dispose()
         {
-            if (!DisposedValue)
-            {
-                if (disposing)
-                {
-                    // TODO: dispose managed state (managed objects).
-                    var reference = this.FromPool;
-                    this.FromPool = null;
-                    ReturnToPool(reference);
-                }
-
-                // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
-                // TODO: set large fields to null.
-
-                DisposedValue = true;
-            }
-        }
-
-        // TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
-        // ~MemoryStreamPool() {
-        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-        //   Dispose(false);
-        // }
-
-        // This code added to correctly implement the disposable pattern.
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
-            // TODO: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
+            var reference = this.FromPool;
+            this.FromPool = null;
+            ReturnToPool(reference);
         }
         #endregion
     }

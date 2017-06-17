@@ -13,7 +13,7 @@ using DistCache.Common.Protocol.Messages;
 
 namespace DistCache.Server.Protocol.Handlers
 {
-    public class HandShakeServerHandler : SocketHandler
+    public class ServerHandShakeHandler : SocketHandler
     {
         public enum HandShakeState
         {
@@ -29,11 +29,10 @@ namespace DistCache.Server.Protocol.Handlers
         private CacheServer _server;
 
 
-        public HandShakeServerHandler(TcpClient tcp, CacheServer server, Guid tempGuid) : base(tcp, server.Config)
+        public ServerHandShakeHandler(TcpClient tcp, CacheServer server, Guid tempGuid) : base(tcp, server.Config)
         {
             this.TemporaryID = tempGuid;
             this._server = server;
-            Start();
         }
 
         protected override bool HandleMessages(byte[] message)
@@ -67,19 +66,19 @@ namespace DistCache.Server.Protocol.Handlers
                         }
                         else if (msg.MessageType == MessageTypeEnum.ServerAuthRequest)
                         {
-                            _server.ServerConnected(this.Connection, msg.RegisteredGuid, TemporaryID);
+                            _server.ServerConnected(msg.RegisteredGuid, TemporaryID);
                         }
                     }
                     else
                     {
-                        _server.UnknownConnectionFailed(this.Connection, TemporaryID);
+                        _server.ConnectionFailed(PassSocket(), TemporaryID);
                     }
                 }
             }
             catch (Exception ex)
             {
                 this.State = HandShakeState.ProtocolError;
-                _server.UnknownConnectionFailed(this.Connection, TemporaryID);
+                _server.ConnectionFailed(PassSocket(), TemporaryID);
             }
             return false;
         }

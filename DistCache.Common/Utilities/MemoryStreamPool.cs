@@ -16,13 +16,10 @@ namespace DistCache.Common.Utilities
 
         }
 
-        protected override void Dispose(bool disposing)
+        public override void Dispose()
         {
-            if (!DisposedValue)
-            {
-                this.FromPool.SetLength(0);
-                base.Dispose(disposing);
-            }
+            this.FromPool.SetLength(0);
+            base.Dispose();
         }
     }
 

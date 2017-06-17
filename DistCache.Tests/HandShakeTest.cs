@@ -1,14 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Threading;
 using System.Net.Sockets;
 using System.Net;
+using System.Linq;
 using DistCache.Common.NetworkManagement;
 using DistCache.Common;
 using DistCache.Server;
 using DistCache.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using DistCache.Common.Protocol.Messages;
+using System.Threading.Tasks;
 
 namespace DistCache.Tests
 {
@@ -37,5 +40,60 @@ namespace DistCache.Tests
             }
 
         }
+
+        [TestMethod]
+        public void HandShakeAcceptMoar()
+        {
+            var dic = new Dictionary<string, string>();
+
+            string pass = DistCacheConfigBase.GenerateRandomPassword();
+
+            var serverConfig = new DistCacheServerConfig()
+            {
+                Password = pass
+            };
+
+            int toAdd = 30;
+            int iters = 10;
+
+            using (var srv = new CacheServer(serverConfig))
+            {
+                var clientscon = new ConcurrentBag<DistCacheClient>();
+
+                for (int k = 0; k < iters; ++k)
+                {
+
+                    List<Task<DistCacheClient>> clients = new List<Task<DistCacheClient>>();
+                    var ls = new List<DistCacheClient>();
+
+                    for (int i = 0; i < toAdd; ++i)
+                    {
+                        clients.Add(new Task<DistCacheClient>(() =>
+                        {
+                            try
+                            {
+                                var o = DistCacheClient.Create(new DistCacheClientConfig() { Password = pass });
+                                clientscon.Add(o);
+                                return o;
+                            }
+                            catch (Exception ex)
+                            {
+                                throw ex;
+                            }
+                        }));
+                        clients.Last().Start();
+                    }
+
+                    Task.WaitAll(clients.ToArray());
+                }
+                while (srv.PendingClientsCount > 0)
+                {
+                    Thread.Sleep(500);
+                }
+                Assert.AreEqual(toAdd * iters, srv.ConnectedClientsCount);
+            }
+        }
+
     }
 }
+
