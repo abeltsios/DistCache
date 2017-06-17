@@ -12,6 +12,8 @@ namespace DistCache.Common.Protocol.Messages
         ServerAuthRequest,
         AuthRequestOk,
         AuthRequestError,
-        KeepAlive
+        KeepAlive,
+        Request,
+        Reponse,
     }
 }

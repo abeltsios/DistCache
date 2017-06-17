@@ -26,8 +26,24 @@ namespace ServerRunningDummy
             using (var srv = new CacheServer(serverConfig))
             {
                 var ls = new List<DistCacheClient>();
-                var client = DistCacheClient.Create(new DistCacheClientConfig() { Password = pass });
-                Thread.Sleep(1000);
+                var lso = new List<Task>();
+                for (int k = 0; k < 2; ++k)
+                {
+                    int it = k;
+                    var o = new Task(() =>
+                      {
+                          using (var client = DistCacheClient.Create(new DistCacheClientConfig() { Password = pass }))
+                          {
+                              for (int i = 0; i < 100; ++i)
+                              {
+                                  client.GetMessage($"{it}_{i}");
+                              }
+                          }
+                      });
+                    o.Start();
+                    lso.Add(o);
+                }
+                Task.WaitAll(lso.ToArray());
             }
         }
     }

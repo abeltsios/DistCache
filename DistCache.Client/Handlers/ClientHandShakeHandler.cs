@@ -18,7 +18,7 @@ namespace DistCache.Client.Protocol.Handlers
         private MessageTypeEnum? state = null;
         private Guid clientUID;
 
-        public ClientHandShakeHandler(TcpClient tcp, DistCacheConfigBase config,Guid clientUID) : base(tcp, config)
+        public ClientHandShakeHandler(TcpClient tcp, DistCacheConfigBase config, Guid clientUID) : base(tcp, config)
         {
             this.clientUID = clientUID;
         }
@@ -27,6 +27,7 @@ namespace DistCache.Client.Protocol.Handlers
         {
             var ans = BsonUtilities.Deserialise<HandShakeOutcome>(message);
             this.state = ans.MessageType;
+            Console.WriteLine($"HandShakeOutcome recieved:{state}");
             waitForLogin.Set();
             return false;
         }

@@ -40,6 +40,7 @@ namespace DistCache.Server.Protocol.Handlers
             try
             {
                 HandShakeRequest msg = BsonUtilities.Deserialise<HandShakeRequest>(message);
+                Console.WriteLine("HandShakeRequest rec");
                 if (Config.Password.Equals(msg.AuthPassword))
                 {
                     State = HandShakeState.Authorised;

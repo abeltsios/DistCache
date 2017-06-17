@@ -10,6 +10,7 @@ using System.Threading;
 using System.IO;
 using System.IO.Compression;
 using DistCache.Common.Utilities;
+using System.Runtime.CompilerServices;
 
 namespace DistCache.Common.NetworkManagement
 {
@@ -101,7 +102,7 @@ namespace DistCache.Common.NetworkManagement
             SendMessage(BsonUtilities.Serialise<T>(Message), false, eventWait);
         }
 
-        public void SendMessage(byte[] b, bool isCompressed = false, ManualResetEventSlim eventWait = null)
+        protected void SendMessage(byte[] b, bool isCompressed = false, ManualResetEventSlim eventWait = null)
         {
 
             this._messagesToSend.Enqueue(new MessageTriplete() { Compressed = isCompressed, Message = b, EventWait = eventWait });
@@ -110,6 +111,7 @@ namespace DistCache.Common.NetworkManagement
 
         #region socket IO
 
+        [MethodImpl(MethodImplOptions.Synchronized)]
         private void SendData()
         {
             if (SocketStatus)
@@ -147,7 +149,6 @@ namespace DistCache.Common.NetworkManagement
                     }
                 }
             }
-            Console.WriteLine($"{this.GetType().FullName} :: read data returned ");
         }
 
         private void InitRead()
@@ -169,18 +170,26 @@ namespace DistCache.Common.NetworkManagement
                      buffer.Dispose();
                  });
             }
+            else
+            {
+                throw new Exception();
+            }
         }
 
         private void ReadData(byte[] b, int toRead)
         {
             lock (lockMe)
             {
+                if (toRead == 0)
+                {
+                    InitRead();
+                }
                 _memoryStream.Write(b, 0, toRead);
                 _memoryStream.Position = 0;
                 using (var sr = new BinaryReader(_memoryStream, Encoding.UTF8, true))
                 {
                     bool shouldHandleOthers = true;
-                    do
+                    while (shouldHandleOthers)
                     {
 
                         int? messageLength = new int?();
@@ -199,14 +208,20 @@ namespace DistCache.Common.NetworkManagement
                                 _memoryStream.SetLength(0);
                                 _memoryStream.Write(remaining, 0, remaining.Length);
                             }
+                            else
+                            {
+                                _memoryStream.SetLength(0);
+                            }
 
                             shouldHandleOthers = HandleMessages(msg);
                         }
-                    } while (shouldHandleOthers);
-
-
-                    if (shouldHandleOthers)
-                        InitRead();
+                        else
+                        {
+                            _memoryStream.Position = 0;
+                            InitRead();
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -267,7 +282,7 @@ namespace DistCache.Common.NetworkManagement
 
 
 
-        public  void Dispose()
+        public void Dispose()
         {
             lock (lockMe)
             {

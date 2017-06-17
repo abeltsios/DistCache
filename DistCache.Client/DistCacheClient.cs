@@ -9,7 +9,8 @@ using System.Threading.Tasks;
 using DistCache.Common;
 using DistCache.Common.NetworkManagement;
 using DistCache.Client.Protocol.Handlers;
-using DistCache.Server.Protocol.Handlers;
+using DistCache.Common.Protocol.Messages;
+using System.Threading;
 
 namespace DistCache.Client
 {
@@ -21,7 +22,6 @@ namespace DistCache.Client
             TcpClient tcp = null;
             IPEndPoint toTry;
             Dictionary<IPEndPoint, bool> invalidEndPoints = new Dictionary<IPEndPoint, bool>();
-
 
             while ((toTry = config.GetOrderedServerIpEndPoint().FirstOrDefault(i => !invalidEndPoints.ContainsKey(i))) != null)
             {
@@ -58,7 +58,7 @@ namespace DistCache.Client
                 }
                 this.ProtocolHandler = new ClientProtocolHandler(hs);
                 this.ProtocolHandler.Initiate();
-                
+
             }
         }
 
@@ -67,6 +67,26 @@ namespace DistCache.Client
         public void Dispose()
         {
             this.ProtocolHandler.Dispose();
+        }
+
+        public string GetMessage(string i)
+        {
+            using (var m = new ManualResetEventSlim(false))
+            {
+                Guid req = Guid.NewGuid();
+                try
+                {
+                    this.ProtocolHandler.RegisterWaiter(req, m);
+                    this.ProtocolHandler.SendMessage(new EchoRequest() { RequestId = req, Echo = $"msg {i}" });
+                    m.Wait();
+                    Console.WriteLine( $"msg {i}");
+                }
+                finally
+                {
+                    this.ProtocolHandler.UnregisterWaiter(req);
+                }
+                return "OK";
+            }
         }
         #endregion
     }
