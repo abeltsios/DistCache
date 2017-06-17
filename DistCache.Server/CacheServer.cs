@@ -45,7 +45,7 @@ namespace DistCache.Server
             {
                 try
                 {
-                    h.Shutdown();
+                    h.Dispose();
                 }
                 catch (Exception ex)
                 {
@@ -65,41 +65,43 @@ namespace DistCache.Server
 
             maintenaceActions += () =>
             {
-                foreach (var kvp in authPendingClients.ToList())
-                {
-                    try
-                    {
-                        if (!kvp.Value.SocketStatus)
-                        {
-                            kvp.Value.Shutdown();
-                            if (authPendingClients.TryRemove(kvp.Key, out ServerHandShakeHandler handler))
-                            {
-                                handler.Dispose();
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        //todo log
-                    }
-                }
+                //foreach (var kvp in authPendingClients.ToList())
+                //{
+                //    try
+                //    {
+                //        if (!kvp.Value.SocketStatus)
+                //        {
+                //            kvp.Value.Shutdown();
+                //            if (authPendingClients.TryRemove(kvp.Key, out ServerHandShakeHandler handler))
+                //            {
+                //                handler.Dispose();
+                //            }
+                //        }
+                //    }
+                //    catch (Exception ex)
+                //    {
+                //        //todo log
+                //    }
+                //}
             };
         }
 
         private void ConnectionAccepted(object sender, TcpClient socket)
         {
             var tempGuid = Guid.NewGuid();
-            authPendingClients[tempGuid] = new ServerHandShakeHandler(socket, this, tempGuid);
-            authPendingClients[tempGuid].Start();
+            var newClient = new ServerHandShakeHandler(socket, this, tempGuid);
+            authPendingClients[tempGuid] = newClient;
+            newClient.Initiate();
         }
 
         public void ClientConnected(Guid registeredGuid, Guid tempGuid)
         {
             if (authPendingClients.TryRemove(tempGuid, out ServerHandShakeHandler client))
             {
+                var h = new ServerToClientProtocolHandler(client);
                 //this is a new valid client
-                Clients.TryAdd(registeredGuid, new SocketHandler(client.PassSocket(), Config));
-                Clients[registeredGuid].Start();
+                Clients.TryAdd(registeredGuid, h);
+                h.Initiate();
             }
             else
             {
@@ -119,44 +121,15 @@ namespace DistCache.Server
             }
         }
 
-        internal void ConnectionFailed(TcpClient tcp, Guid? temporaryID)
+        internal void ConnectionFailed(SocketHandler sockHandler, Guid? temporaryID)
         {
             throw new NotImplementedException();
         }
 
-        #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    Shutdown();
-                }
-
-                // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
-                // TODO: set large fields to null.
-
-                disposedValue = true;
-            }
-        }
-
-        // TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
-        // ~CacheServer() {
-        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-        //   Dispose(false);
-        // }
-
-        // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
-            // TODO: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
+            Shutdown();
+
         }
-        #endregion
     }
 }

@@ -27,7 +27,6 @@ namespace DistCache.Tests
 
             var serverConfig = new DistCacheServerConfig()
             {
-
                 Password = pass
             };
 
@@ -53,8 +52,8 @@ namespace DistCache.Tests
                 Password = pass
             };
 
-            int toAdd = 30;
-            int iters = 10;
+            int toAdd = 16;
+            int iters = 2;
 
             using (var srv = new CacheServer(serverConfig))
             {
@@ -70,16 +69,11 @@ namespace DistCache.Tests
                     {
                         clients.Add(new Task<DistCacheClient>(() =>
                         {
-                            try
-                            {
-                                var o = DistCacheClient.Create(new DistCacheClientConfig() { Password = pass });
-                                clientscon.Add(o);
-                                return o;
-                            }
-                            catch (Exception ex)
-                            {
-                                throw ex;
-                            }
+
+                            var o = DistCacheClient.Create(new DistCacheClientConfig() { Password = pass });
+                            clientscon.Add(o);
+                            return o;
+
                         }));
                         clients.Last().Start();
                     }

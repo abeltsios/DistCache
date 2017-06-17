@@ -40,7 +40,7 @@ namespace DistCache.Server.Protocol.Handlers
             try
             {
                 HandShakeRequest msg = BsonUtilities.Deserialise<HandShakeRequest>(message);
-                if (config.Password.Equals(msg.AuthPassword))
+                if (Config.Password.Equals(msg.AuthPassword))
                 {
                     State = HandShakeState.Authorised;
                 }
@@ -58,7 +58,7 @@ namespace DistCache.Server.Protocol.Handlers
                     }, waiter);
 
 
-                    if (waiter.Wait(config.SocketWriteTimeout) && State == HandShakeState.Authorised)
+                    if (waiter.Wait(Config.SocketWriteTimeout) && State == HandShakeState.Authorised)
                     {
                         if (msg.MessageType == MessageTypeEnum.ClientAuthRequest)
                         {
@@ -71,14 +71,14 @@ namespace DistCache.Server.Protocol.Handlers
                     }
                     else
                     {
-                        _server.ConnectionFailed(PassSocket(), TemporaryID);
+                        _server.ConnectionFailed(this, TemporaryID);
                     }
                 }
             }
             catch (Exception ex)
             {
                 this.State = HandShakeState.ProtocolError;
-                _server.ConnectionFailed(PassSocket(), TemporaryID);
+                _server.ConnectionFailed(this, TemporaryID);
             }
             return false;
         }

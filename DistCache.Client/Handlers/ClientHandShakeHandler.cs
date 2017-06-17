@@ -10,27 +10,23 @@ using DistCache.Common;
 using DistCache.Common.Utilities;
 using DistCache.Common.Protocol.Messages;
 
-namespace DistCache.Client.Handlers
+namespace DistCache.Client.Protocol.Handlers
 {
     public class ClientHandShakeHandler : SocketHandler
     {
         private ManualResetEventSlim waitForLogin = new ManualResetEventSlim(false);
         private MessageTypeEnum? state = null;
         private Guid clientUID;
+
         public ClientHandShakeHandler(TcpClient tcp, DistCacheConfigBase config,Guid clientUID) : base(tcp, config)
         {
             this.clientUID = clientUID;
-            Start();
         }
 
         protected override bool HandleMessages(byte[] message)
         {
             var ans = BsonUtilities.Deserialise<HandShakeOutcome>(message);
             this.state = ans.MessageType;
-            if( state != MessageTypeEnum.AuthRequestOk)
-            {
-                Shutdown();
-            }
             waitForLogin.Set();
             return false;
         }
@@ -41,12 +37,12 @@ namespace DistCache.Client.Handlers
             {
                 SendMessage(new HandShakeRequest()
                 {
-                    AuthPassword = config.Password,
+                    AuthPassword = Config.Password,
                     MessageType = MessageTypeEnum.ClientAuthRequest,
                     RegisteredGuid = clientUID
                 });
 
-                if (waitForLogin.Wait(config.SocketReadTimeout) && state == MessageTypeEnum.AuthRequestOk)
+                if (waitForLogin.Wait(Config.SocketReadTimeout) && state == MessageTypeEnum.AuthRequestOk)
                 {
                     return true;
                 }

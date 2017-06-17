@@ -43,6 +43,7 @@ namespace DistCache.Common.NetworkManagement
 
             return Connection;
         }
+
         internal class MessageTriplete
         {
             public bool Compressed { get; set; }
@@ -52,25 +53,47 @@ namespace DistCache.Common.NetworkManagement
             public ManualResetEventSlim EventWait { get; set; }
         }
 
-        private TcpClient _connection;
-        private ConcurrentQueue<MessageTriplete> _messagesToSend = new ConcurrentQueue<MessageTriplete>();
+        private ConcurrentQueue<MessageTriplete> _messagesToSend;
 
-        private MemoryStreamPool _memoryStream = new MemoryStreamPool();
         private readonly System.Diagnostics.Stopwatch LastSocketIO = System.Diagnostics.Stopwatch.StartNew();
-        private bool keepHandlingMessages = true;
-        public event EventHandler<SocketHandler> ConnectionError;
-        public DistCacheConfigBase config { get; protected set; }
 
-        public SocketHandler(TcpClient tcp, DistCacheConfigBase config)
+        //for messages
+        private TcpClient _connection;
+        private MemoryStream _memoryStream;
+        private readonly object lockMe = new object();
+
+        public event EventHandler<SocketHandler> ConnectionError;
+        public DistCacheConfigBase Config { get; protected set; }
+
+        protected SocketHandler(TcpClient tcp, DistCacheConfigBase config)
         {
-            this.config = config;
+            this.Config = config;
             this._connection = tcp;
+            this._messagesToSend = new ConcurrentQueue<MessageTriplete>();
+            _memoryStream = new MemoryStream();
         }
 
-        public void Start()
+        public void Initiate()
         {
-            new Thread(ReadData).Start();
-            new Thread(SendData).Start();
+            InitRead();
+        }
+
+        protected SocketHandler(SocketHandler other)
+        {
+            lock (this.lockMe)
+            {
+                lock (other.lockMe)
+                {
+                    this.Config = Config;
+                    this._connection = other._connection;
+                    other._connection = null;
+                    this._memoryStream = other._memoryStream;
+                    other._memoryStream = null;
+                    this.Config = other.Config;
+                    this._messagesToSend = other._messagesToSend;
+                    other._messagesToSend = null;
+                }
+            }
         }
 
         public void SendMessage<T>(T Message, ManualResetEventSlim eventWait = null)
@@ -80,24 +103,19 @@ namespace DistCache.Common.NetworkManagement
 
         public void SendMessage(byte[] b, bool isCompressed = false, ManualResetEventSlim eventWait = null)
         {
-            if (SocketStatus)
-            {
-                this._messagesToSend.Enqueue(new MessageTriplete() { Compressed = isCompressed, Message = b, EventWait = eventWait });
-            }
-            else
-            {
-                throw new Exception("send msg while socket dead");
-            }
+
+            this._messagesToSend.Enqueue(new MessageTriplete() { Compressed = isCompressed, Message = b, EventWait = eventWait });
+            new Task(() => SendData()).Start();
         }
 
         #region socket IO
 
         private void SendData()
         {
-            while (keepHandlingMessages && SocketStatus)
+            if (SocketStatus)
             {
-
-                while (keepHandlingMessages && _messagesToSend.TryDequeue(out MessageTriplete toSend))
+                MessageTriplete toSend = null;
+                while (_messagesToSend?.TryDequeue(out toSend) == true)
                 {
                     byte[] msg = toSend.Message;
                     if (!toSend.Compressed)
@@ -128,73 +146,68 @@ namespace DistCache.Common.NetworkManagement
                         }
                     }
                 }
-                if (!_messagesToSend.Any())
-                    Thread.Sleep(1);
             }
             Console.WriteLine($"{this.GetType().FullName} :: read data returned ");
         }
 
-        private void ReadData()
+        private void InitRead()
         {
-            try
+            if (SocketStatus)
             {
-                while (SocketStatus)
+                var buffer = new ByteArrayBufferPool();
+                _connection.GetStream().ReadAsync(buffer.ByteArray, 0, buffer.ByteArray.Length).ContinueWith(task =>
+                 {
+                     if (task.IsFaulted)
+                     {
+                         this.ConnectionError?.Invoke(this, this);
+                     }
+                     else if (task.IsCompleted)
+                     {
+                         LastSocketIO.Restart();
+                         ReadData(buffer.ByteArray, task.Result);
+                     }
+                     buffer.Dispose();
+                 });
+            }
+        }
+
+        private void ReadData(byte[] b, int toRead)
+        {
+            lock (lockMe)
+            {
+                _memoryStream.Write(b, 0, toRead);
+                _memoryStream.Position = 0;
+                using (var sr = new BinaryReader(_memoryStream, Encoding.UTF8, true))
                 {
-                    using (var sr = new BinaryReader(_connection.GetStream(), Encoding.UTF8, true))
+                    bool shouldHandleOthers = true;
+                    do
                     {
+
                         int? messageLength = new int?();
-
-                        while (_connection.Connected && _connection.GetStream().CanRead && _connection.Available > 0)
+                        if (!messageLength.HasValue && (_memoryStream.Length - _memoryStream.Position) > 4)
                         {
-                            LastSocketIO.Restart();
-                            if (!messageLength.HasValue && _connection.Available > 4)
-                            {
-                                messageLength = sr.ReadInt32();
-                            }
-                            else if (messageLength.HasValue)
-                            {
-                                int toRead;
-                                if (_connection.Available > (messageLength.Value - _memoryStream.Stream.Position))
-                                {
-                                    toRead = (int)(messageLength.Value - _memoryStream.Stream.Position);
-                                }
-                                else
-                                {
-                                    toRead = _connection.Available;
-                                }
-
-                                _memoryStream.Stream.Write(sr.ReadBytes(toRead), 0, toRead);
-                                if (_memoryStream.Stream.Position == messageLength.Value)
-                                {
-                                    if (messageLength.Value == _memoryStream.Stream.Position)
-                                    {
-                                        _memoryStream.Stream.Seek(0, SeekOrigin.Begin);
-                                        var packet = CompressionUtilitities.Decompress(_memoryStream.Stream);
-                                        _memoryStream.Stream.SetLength(0);
-                                        messageLength = null;
-                                        if (!HandleMessages(packet))
-                                        {
-                                            //exit thread
-                                            keepHandlingMessages = false;
-                                            return;
-                                        }
-
-                                    }
-
-                                }
-                            }
+                            messageLength = sr.ReadInt32();
                         }
-                        Thread.Sleep(1);
-                    }
+
+                        if (messageLength.HasValue && (_memoryStream.Length - _memoryStream.Position) >= messageLength)
+                        {
+                            byte[] msg = Utilities.CompressionUtilitities.Decompress(sr.ReadBytes(messageLength.Value));
+
+                            if (_memoryStream.Length > _memoryStream.Position)
+                            {
+                                byte[] remaining = sr.ReadBytes((int)(_memoryStream.Length - _memoryStream.Position));
+                                _memoryStream.SetLength(0);
+                                _memoryStream.Write(remaining, 0, remaining.Length);
+                            }
+
+                            shouldHandleOthers = HandleMessages(msg);
+                        }
+                    } while (shouldHandleOthers);
+
+
+                    if (shouldHandleOthers)
+                        InitRead();
                 }
-            }
-            catch (Exception ex)
-            {
-                this.ConnectionError?.Invoke(this, this);
-            }
-            finally
-            {
-                Console.WriteLine($"{this.GetType().FullName} :: read data returned ");
             }
         }
 
@@ -248,23 +261,15 @@ namespace DistCache.Common.NetworkManagement
         }
 
         public virtual bool SocketStatus => _connection?.Connected == true
-            && LastSocketIO.ElapsedMilliseconds < config.SocketConsideredDead
+            && LastSocketIO.ElapsedMilliseconds < Config.SocketConsideredDead
             && _connection?.GetStream()?.CanRead == true
             && _connection?.GetStream()?.CanWrite == true;
 
 
 
-        public TcpClient PassSocket()
+        public  void Dispose()
         {
-            var c = this._connection;
-            this._connection = null;
-            return c;
-        }
-
-      
-        public virtual void Dispose()
-        {
-            if (keepHandlingMessages)
+            lock (lockMe)
             {
                 try
                 {
@@ -275,18 +280,19 @@ namespace DistCache.Common.NetworkManagement
                     //TODO LogMe
                 }
                 _connection = null;
-            }
 
-            try
-            {
-                this._memoryStream.Dispose();
+                try
+                {
+                    _memoryStream?.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    //TODO LogMe
+                }
+                _memoryStream = null;
+
+                _messagesToSend = null;
             }
-            catch (Exception ex)
-            {
-                //TODO LogMe
-            }
-            this._memoryStream = null;
-            this._messagesToSend = null;
             // TODO: dispose managed state (managed objects).
         }
 

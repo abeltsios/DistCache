@@ -4,6 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
+using DistCache.Common;
+using DistCache.Server;
+using DistCache.Client;
 
 namespace ServerRunningDummy
 {
@@ -11,15 +14,20 @@ namespace ServerRunningDummy
     {
         public static void Main(string[] args)
         {
-            using (var srv = new DistCache.Server.CacheServer(new DistCache.Server.DistCacheServerConfig()
+            var dic = new Dictionary<string, string>();
+
+            string pass = DistCacheConfigBase.GenerateRandomPassword();
+
+            var serverConfig = new DistCacheServerConfig()
             {
-                Password = "asdasd"
-            }, false))
+                Password = pass
+            };
+
+            using (var srv = new CacheServer(serverConfig))
             {
-                using (var cli = DistCache.Client.DistCacheClient.Create(new DistCache.Client.DistCacheClientConfig() { Password = "asdasd" }))
-                {
-                }
-                Thread.Sleep(10);
+                var ls = new List<DistCacheClient>();
+                var client = DistCacheClient.Create(new DistCacheClientConfig() { Password = pass });
+                Thread.Sleep(1000);
             }
         }
     }

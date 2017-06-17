@@ -20,14 +20,12 @@ namespace DistCache.Common.NetworkManagement
 
         private event EventHandler<Exception> ServerSocketFail;
 
-        private bool exceptionOccured = false;
-
         public SocketServer(IPEndPoint bindTo, bool restartOnSocketFailure = true)
         {
             this._restartOnSocketFailure = restartOnSocketFailure;
             this._localEndPoint = new IPEndPoint(bindTo.Address, bindTo.Port);
             this._socketListener = new TcpListener(_localEndPoint);
-            this._socketListener.Start(300);
+            this._socketListener.Start(32);
             ServerSocketFail += OnServerSocketFailed;
         }
 
@@ -48,7 +46,6 @@ namespace DistCache.Common.NetworkManagement
                 {
                     if (task.IsFaulted)
                     {
-                        exceptionOccured = true;
                         ServerSocketFail.Invoke(task, task.Exception);
                     }
                     else

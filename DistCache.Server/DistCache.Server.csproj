@@ -44,6 +44,8 @@
     <Compile Include="CacheServer.cs" />
     <Compile Include="DistCacheServerConfig.cs" />
     <Compile Include="Handlers\ServerHandShakeHandler.cs" />
+    <Compile Include="Handlers\ServerToClientProtocolHandler.cs" />
+    <Compile Include="Handlers\ServerToServerProtocolHandler.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

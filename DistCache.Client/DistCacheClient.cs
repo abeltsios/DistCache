@@ -8,7 +8,8 @@ using System.Text;
 using System.Threading.Tasks;
 using DistCache.Common;
 using DistCache.Common.NetworkManagement;
-using DistCache.Client.Handlers;
+using DistCache.Client.Protocol.Handlers;
+using DistCache.Server.Protocol.Handlers;
 
 namespace DistCache.Client
 {
@@ -44,35 +45,28 @@ namespace DistCache.Client
         #endregion
 
         public readonly Guid ClientId = Guid.NewGuid();
+        private readonly ClientProtocolHandler ProtocolHandler;
 
         private DistCacheClient(TcpClient tcp, DistCacheClientConfig config)
         {
-            bool res;
             using (var hs = new ClientHandShakeHandler(tcp, config, this.ClientId))
             {
-                res = hs.VerifyConnection();
-                this._tcp = hs.PassSocket();
-
-            }
-            if (!res)
-            {
-                throw new Exception("invalid log in or connection error");
+                hs.Initiate();
+                if (!hs.VerifyConnection())
+                {
+                    throw new Exception("invalid log in or connection error");
+                }
+                this.ProtocolHandler = new ClientProtocolHandler(hs);
+                this.ProtocolHandler.Initiate();
+                
             }
         }
 
         #region IDisposable Support
-        private TcpClient _tcp;
 
         public void Dispose()
         {
-            try
-            {
-                _tcp.Close();
-            }
-            catch (Exception)
-            {
-            }
-            _tcp = null;
+            this.ProtocolHandler.Dispose();
         }
         #endregion
     }

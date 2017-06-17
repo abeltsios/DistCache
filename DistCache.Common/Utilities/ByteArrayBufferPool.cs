@@ -8,7 +8,7 @@ namespace DistCache.Common.Utilities
 {
     public class ByteArrayBufferPool : ReusableObjectsPool<byte[]>
     {
-        public byte[] Stream => FromPool;
+        public byte[] ByteArray => FromPool;
         public ByteArrayBufferPool() : base(() => { return new byte[4 * 1 << 10]; })
         {
 

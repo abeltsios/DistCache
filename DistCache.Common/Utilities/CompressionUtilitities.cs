@@ -17,7 +17,7 @@ namespace DistCache.Common.Utilities
         {
             using (var ms = new MemoryStreamPool())
             {
-                using (var gz = new GZipStream(ms.Stream, CompressionMode.Compress, true))
+                using (var gz = new GZipStream(ms.Stream, CompressionMode.Compress,true))
                 {
                     gz.Write(data, 0, data.Length);
                 }
@@ -25,26 +25,29 @@ namespace DistCache.Common.Utilities
             }
         }
 
-        public static byte[] Decompress(MemoryStream compressed)
+        public static byte[] Decompress(byte[] compBytes)
         {
-            using (GZipStream stream = new GZipStream(compressed, CompressionMode.Decompress, true))
+            using (MemoryStream compressed = new MemoryStream(compBytes))
             {
-                using (var bytearrayBuffer = new ByteArrayBufferPool())
+                using (GZipStream stream = new GZipStream(compressed, CompressionMode.Decompress, true))
                 {
-                    byte[] buffer = bytearrayBuffer.Stream;
-                    using (var ms = new MemoryStreamPool())
+                    using (var bytearrayBuffer = new ByteArrayBufferPool())
                     {
-                        int count = 0;
-                        do
+                        byte[] buffer = bytearrayBuffer.ByteArray;
+                        using (var ms = new MemoryStreamPool())
                         {
-                            count = stream.Read(buffer, 0, buffer.Length);
-                            if (count > 0)
+                            int count = 0;
+                            do
                             {
-                                ms.Stream.Write(buffer, 0, count);
+                                count = stream.Read(buffer, 0, buffer.Length);
+                                if (count > 0)
+                                {
+                                    ms.Stream.Write(buffer, 0, count);
+                                }
                             }
+                            while (count > 0);
+                            return ms.Stream.ToArray();
                         }
-                        while (count > 0);
-                        return ms.Stream.ToArray();
                     }
                 }
             }
