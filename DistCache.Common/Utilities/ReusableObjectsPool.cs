@@ -13,7 +13,7 @@ namespace DistCache.Common.Utilities
     {
         protected delegate T PoolableObjectFactory();
 
-        public static int MaxPoolSize { get; set; } = 100;
+        public static int MaxPoolSize { get; set; } = 1000;
 
         protected T FromPool { get; private set; }
 

@@ -50,8 +50,12 @@ namespace DistCache.Common.NetworkManagement
                     }
                     else
                     {
-                        ConnectionAccepted?.Invoke(this, task.Result);
                         AcceptSocket();
+                        ThreadPool.QueueUserWorkItem((o) =>
+                        {
+                            ConnectionAccepted?.Invoke(this, task.Result);
+                        });
+
                     }
                 });
             }

@@ -7,6 +7,7 @@ using System.Threading;
 using DistCache.Common;
 using DistCache.Server;
 using DistCache.Client;
+using System.Diagnostics;
 
 namespace ServerRunningDummy
 {
@@ -25,25 +26,44 @@ namespace ServerRunningDummy
 
             using (var srv = new CacheServer(serverConfig))
             {
+                int clients = 100;
+                int msgs = 1000;
+
                 var ls = new List<DistCacheClient>();
-                var lso = new List<Task>();
-                for (int k = 0; k < 2; ++k)
+
+                for (int k = 0; k < clients; ++k)
                 {
-                    int it = k;
-                    var o = new Task(() =>
-                      {
-                          using (var client = DistCacheClient.Create(new DistCacheClientConfig() { Password = pass }))
-                          {
-                              for (int i = 0; i < 100; ++i)
-                              {
-                                  client.GetMessage($"{it}_{i}");
-                              }
-                          }
-                      });
-                    o.Start();
-                    lso.Add(o);
+                    var client = DistCacheClient.Create(new DistCacheClientConfig() { Password = pass });
+                    ls.Add(client);
+                    if (k % 1000 == 0)
+                    {
+                        Console.WriteLine($"connected {k + 1}");
+                    }
                 }
-                Task.WaitAll(lso.ToArray());
+
+                Stopwatch sw = Stopwatch.StartNew();
+                long cnt = 0;
+                for (int i = 0; i < msgs; ++i)
+                {
+                    ThreadPool.QueueUserWorkItem((o) =>
+                    {
+                        foreach (var cl in ls)
+                        {
+                            string s = cl.GetMessage($"{i}").Result;
+                            Interlocked.Increment(ref cnt);
+                        }
+                    });
+
+                }
+                while (true)
+                {
+                    Console.ReadLine();
+                    long cn = Interlocked.Read(ref DistCacheClient.MsgCount);
+                    Console.WriteLine($"sent {cn}/{cnt+1}");
+                    Console.WriteLine(decimal.Divide(sw.ElapsedMilliseconds, cn+1));
+                    Console.WriteLine(sw.Elapsed);
+                }
+
             }
         }
     }

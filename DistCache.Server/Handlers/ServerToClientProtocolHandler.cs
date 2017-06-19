@@ -21,7 +21,6 @@ namespace DistCache.Server.Protocol.Handlers
             if (deserd is EchoRequest)
             {
                 var req = (deserd as EchoRequest);
-                Console.WriteLine("EchoRequest rec:" + req.Echo);
                 SendMessage(new EchoResponse() { RequestId = req.RequestId, Echo = req.Echo });
             }
             else

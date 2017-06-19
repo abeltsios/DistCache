@@ -176,52 +176,56 @@ namespace DistCache.Common.NetworkManagement
             }
         }
 
+        private bool _shouldKeepHandlingMessages = true;
+
         private void ReadData(byte[] b, int toRead)
         {
             lock (lockMe)
             {
-                if (toRead == 0)
+                if (toRead > 0 && _shouldKeepHandlingMessages)
                 {
-                    InitRead();
-                }
-                _memoryStream.Write(b, 0, toRead);
-                _memoryStream.Position = 0;
-                using (var sr = new BinaryReader(_memoryStream, Encoding.UTF8, true))
-                {
-                    bool shouldHandleOthers = true;
-                    while (shouldHandleOthers)
+                    _memoryStream.Write(b, 0, toRead);
+                    _memoryStream.Position = 0;
+                    using (var sr = new BinaryReader(_memoryStream, Encoding.UTF8, true))
                     {
-
-                        int? messageLength = new int?();
-                        if (!messageLength.HasValue && (_memoryStream.Length - _memoryStream.Position) > 4)
+                        while (_shouldKeepHandlingMessages)
                         {
-                            messageLength = sr.ReadInt32();
-                        }
 
-                        if (messageLength.HasValue && (_memoryStream.Length - _memoryStream.Position) >= messageLength)
-                        {
-                            byte[] msg = Utilities.CompressionUtilitities.Decompress(sr.ReadBytes(messageLength.Value));
-
-                            if (_memoryStream.Length > _memoryStream.Position)
+                            int? messageLength = new int?();
+                            if (!messageLength.HasValue && (_memoryStream.Length - _memoryStream.Position) > 4)
                             {
-                                byte[] remaining = sr.ReadBytes((int)(_memoryStream.Length - _memoryStream.Position));
-                                _memoryStream.SetLength(0);
-                                _memoryStream.Write(remaining, 0, remaining.Length);
+                                messageLength = sr.ReadInt32();
+                            }
+
+                            if (messageLength.HasValue && (_memoryStream.Length - _memoryStream.Position) >= messageLength)
+                            {
+                                byte[] msg = Utilities.CompressionUtilitities.Decompress(sr.ReadBytes(messageLength.Value));
+
+                                if (_memoryStream.Length > _memoryStream.Position)
+                                {
+                                    byte[] remaining = sr.ReadBytes((int)(_memoryStream.Length - _memoryStream.Position));
+                                    _memoryStream.SetLength(0);
+                                    _memoryStream.Write(remaining, 0, remaining.Length);
+                                }
+                                else
+                                {
+                                    _memoryStream.SetLength(0);
+                                }
+
+                                _shouldKeepHandlingMessages = HandleMessages(msg);
+                                if (!_shouldKeepHandlingMessages)
+                                    break;
                             }
                             else
                             {
-                                _memoryStream.SetLength(0);
+                                break;
                             }
-
-                            shouldHandleOthers = HandleMessages(msg);
-                        }
-                        else
-                        {
-                            _memoryStream.Position = 0;
-                            InitRead();
-                            break;
                         }
                     }
+                }
+                if (_shouldKeepHandlingMessages)
+                {
+                    InitRead();
                 }
             }
         }
