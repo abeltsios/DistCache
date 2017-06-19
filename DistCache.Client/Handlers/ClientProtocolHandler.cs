@@ -14,7 +14,7 @@ namespace DistCache.Client.Protocol.Handlers
 {
     public class ClientProtocolHandler : SocketHandler
     {
-        private ConcurrentDictionary<Guid, ManualResetEventSlim> _messagesW = new ConcurrentDictionary<Guid, ManualResetEventSlim>();
+        private ConcurrentDictionary<Guid, TaskCompletionSource<object>> _messagesW = new ConcurrentDictionary<Guid, TaskCompletionSource<object>>();
 
         public ClientProtocolHandler(SocketHandler socket) : base(socket)
         {
@@ -23,28 +23,19 @@ namespace DistCache.Client.Protocol.Handlers
         protected override bool HandleMessages(byte[] message)
         {
             var deserd = BsonUtilities.Deserialise<BaseMessage>(message);
-            Console.WriteLine($"BaseMessage recieved:{deserd.MessageType}");
-            if (deserd is EchoResponse)
-            {
-                var req = (deserd as EchoResponse);
-                Console.WriteLine("\t" + $"EchoResponse recieved:{req.MessageType}");
-                _messagesW[req.RequestId].Set();
-            }
-            else
-            {
-                throw new Exception("aaaaaaaa");
-            }
+            var req = (deserd as BaseResponse);
+            _messagesW[req.RequestId].SetResult(req);
             return true;
         }
 
-        internal void RegisterWaiter(Guid req, ManualResetEventSlim m)
+        internal void RegisterWaiter(Guid req, TaskCompletionSource<object> m)
         {
             _messagesW.TryAdd(req, m);
         }
 
         internal void UnregisterWaiter(Guid req)
         {
-            _messagesW.TryRemove(req, out ManualResetEventSlim m);
+            _messagesW.TryRemove(req, out TaskCompletionSource<object> m);
         }
     }
 }
