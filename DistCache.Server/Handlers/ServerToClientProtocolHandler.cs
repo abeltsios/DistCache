@@ -6,28 +6,35 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using DistCache.Common.Protocol;
 
 namespace DistCache.Server.Protocol.Handlers
 {
-    public class ServerToClientProtocolHandler : SocketHandler
+    public class ServerToClientProtocolHandler : BaseProtocolHandler
     {
         public ServerToClientProtocolHandler(SocketHandler other) : base(other)
         {
         }
 
-        protected override bool HandleMessages(byte[] message)
+        protected override void HandleRequest(BaseRequest baseRequest)
         {
-            var deserd = BsonUtilities.Deserialise<BaseMessage>(message);
-            if (deserd is EchoRequest)
+            switch (baseRequest.MessageSubtype)
             {
-                var req = (deserd as EchoRequest);
-                SendMessage(new EchoResponse() { RequestId = req.RequestId, Echo = req.Echo });
+                case MessageSubTypeEnum.Echo:
+                    {
+                        SendMessage(baseRequest.CreateResponse());
+                        break;
+                    }
+                default:
+                    {
+                        throw new Exception("Unknown message type");
+                    }
             }
-            else
-            {
-                throw new Exception("aaaaaaaa");
-            }
-            return true;
+        }
+
+        protected override void HandleResponse(BaseResponse baseResponse)
+        {
+            throw new Exception("should be here for now");
         }
     }
 }

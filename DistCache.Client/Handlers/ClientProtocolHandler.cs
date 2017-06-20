@@ -9,33 +9,34 @@ using System.Threading;
 using DistCache.Common.Protocol.Messages;
 using DistCache.Common.Utilities;
 using System.Net.Sockets;
+using DistCache.Common.Protocol;
 
 namespace DistCache.Client.Protocol.Handlers
 {
-    public class ClientProtocolHandler : SocketHandler
+    public class ClientProtocolHandler : BaseProtocolHandler
     {
-        private ConcurrentDictionary<Guid, TaskCompletionSource<object>> _messagesW = new ConcurrentDictionary<Guid, TaskCompletionSource<object>>();
 
         public ClientProtocolHandler(SocketHandler socket) : base(socket)
         {
         }
 
-        protected override bool HandleMessages(byte[] message)
+        protected override void HandleRequest(BaseRequest baseRequest)
         {
-            var deserd = BsonUtilities.Deserialise<BaseMessage>(message);
-            var req = (deserd as BaseResponse);
-            _messagesW[req.RequestId].SetResult(req);
-            return true;
+            switch (baseRequest.MessageSubtype)
+            {
+                default:
+                    {
+                        throw new Exception("Unknown message type");
+                    }
+            }
         }
 
-        internal void RegisterWaiter(Guid req, TaskCompletionSource<object> m)
+        protected override void HandleResponse(BaseResponse baseResponse)
         {
-            _messagesW.TryAdd(req, m);
-        }
-
-        internal void UnregisterWaiter(Guid req)
-        {
-            _messagesW.TryRemove(req, out TaskCompletionSource<object> m);
+            if (_tasksAwaitingResponse.TryGetValue(baseResponse.RequestId, out TaskCompletionDisposableSource toSet))
+            {
+                toSet.TrySetResult(baseResponse);
+            }
         }
     }
 }

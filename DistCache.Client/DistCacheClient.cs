@@ -16,7 +16,6 @@ namespace DistCache.Client
 {
     public class DistCacheClient : IDisposable
     {
-        public static long MsgCount = 0;
         #region connection Factory
         public static DistCacheClient Create(DistCacheClientConfig config)
         {
@@ -72,20 +71,12 @@ namespace DistCache.Client
 
         public async Task<string> GetMessage(string i)
         {
-            var m = new TaskCompletionSource<object>();
-            Guid req = Guid.NewGuid();
-            try
-            {
-                this.ProtocolHandler.RegisterWaiter(req, m);
-                this.ProtocolHandler.SendMessage(new EchoRequest() { RequestId = req, Echo = $"msg {i}" });
-                await m.Task;
-                Interlocked.Increment(ref MsgCount);
-                return (m.Task.Result as EchoResponse).Echo;
-            }
-            finally
-            {
-                this.ProtocolHandler.UnregisterWaiter(req);
-            }
+                using (var m = this.ProtocolHandler.CreateTaskCompletionDisposableSource())
+                {
+                    this.ProtocolHandler.SendMessage(new EchoRequest() { RequestId = m.Id, Echo = $"msg {i}" });
+                    await m.Task;
+                    return (m.Task.Result as EchoResponse).Echo;
+                }
         }
         #endregion
     }

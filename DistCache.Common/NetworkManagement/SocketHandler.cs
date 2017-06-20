@@ -14,7 +14,7 @@ using System.Runtime.CompilerServices;
 
 namespace DistCache.Common.NetworkManagement
 {
-    public class SocketHandler : IDisposable
+    public abstract class SocketHandler : IDisposable
     {
         public static TcpClient CreateSocket(IPEndPoint endpoint, DistCacheConfigBase config)
         {
@@ -241,29 +241,7 @@ namespace DistCache.Common.NetworkManagement
         /// </summary>
         /// <param name="message"></param>
         /// <returns></returns>
-        protected virtual bool HandleMessages(byte[] message)
-        {
-            try
-            {
-                var o = BsonUtilities.Deserialise<Dictionary<object, object>>(message);
-                PrintBson(o);
-                Console.WriteLine(Encoding.UTF8.GetString(message));
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("unreadable message");
-            }
-            return true;
-        }
-
-        private void PrintBson(Dictionary<object, object> o, string depth = "")
-        {
-            foreach (var k in o)
-            {
-
-                Console.WriteLine($"{depth}{k.Key}:{k.Value}");
-            }
-        }
+        protected abstract bool HandleMessages(byte[] message);
 
         public void Shutdown()
         {

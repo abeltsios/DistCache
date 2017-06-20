@@ -26,8 +26,8 @@ namespace ServerRunningDummy
 
             using (var srv = new CacheServer(serverConfig))
             {
-                int clients = 100;
-                int msgs = 1000;
+                int clients = 200;
+                int msgs = 200;
 
                 var ls = new List<DistCacheClient>();
 
@@ -35,34 +35,27 @@ namespace ServerRunningDummy
                 {
                     var client = DistCacheClient.Create(new DistCacheClientConfig() { Password = pass });
                     ls.Add(client);
-                    if (k % 1000 == 0)
-                    {
-                        Console.WriteLine($"connected {k + 1}");
-                    }
+                   
                 }
 
                 Stopwatch sw = Stopwatch.StartNew();
                 long cnt = 0;
                 for (int i = 0; i < msgs; ++i)
                 {
-                    ThreadPool.QueueUserWorkItem((o) =>
-                    {
-                        foreach (var cl in ls)
-                        {
-                            string s = cl.GetMessage($"{i}").Result;
-                            Interlocked.Increment(ref cnt);
-                        }
-                    });
 
+                    foreach (var cl in ls)
+                    {
+                        string s = cl.GetMessage($"{i}").Result;
+                        ++cnt;
+                        if (cnt % 1000 == 0)
+                        {
+                            Console.WriteLine($"sent {cnt + 1}");
+                        }
+                    }
                 }
-                while (true)
-                {
-                    Console.ReadLine();
-                    long cn = Interlocked.Read(ref DistCacheClient.MsgCount);
-                    Console.WriteLine($"sent {cn}/{cnt+1}");
-                    Console.WriteLine(decimal.Divide(sw.ElapsedMilliseconds, cn+1));
-                    Console.WriteLine(sw.Elapsed);
-                }
+                Console.WriteLine(sw.Elapsed);
+                Console.ReadLine();
+
 
             }
         }

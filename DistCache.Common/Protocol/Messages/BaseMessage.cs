@@ -6,12 +6,29 @@ using System.Threading.Tasks;
 
 namespace DistCache.Common.Protocol.Messages
 {
-    public class BaseMessage
+    public enum MessageTypeEnum
+    {
+        ClientAuthRequest = 1,
+        ServerAuthRequest,
+        AuthRequestOk,
+        AuthRequestError,
+        KeepAlive,
+        Request,
+        Reponse,
+    }
+
+    public enum MessageSubTypeEnum
+    {
+        Echo = 1,
+        PingPong
+    }
+
+    public abstract class BaseMessage
     {
         public MessageTypeEnum MessageType { get; set; }
     }
 
-    public class BaseRequest : BaseMessage
+    public abstract class BaseRequest : BaseMessage
     {
 
         public BaseRequest() : base()
@@ -19,25 +36,18 @@ namespace DistCache.Common.Protocol.Messages
             this.MessageType = MessageTypeEnum.Request;
         }
         public Guid RequestId { get; set; }
+        public MessageSubTypeEnum MessageSubtype { get; set; }
+
+        public abstract BaseResponse CreateResponse();
     }
 
-    public class EchoRequest : BaseRequest
+    public abstract class BaseResponse : BaseMessage
     {
-        public string Echo { get; set; }
-    }
-
-    public class BaseResponse : BaseMessage
-    {
-
         public BaseResponse() : base()
         {
             this.MessageType = MessageTypeEnum.Reponse;
         }
+        public MessageSubTypeEnum MessageSubtype { get; set; }
         public Guid RequestId { get; set; }
-    }
-
-    public class EchoResponse : BaseResponse
-    {
-        public string Echo { get; set; }
     }
 }
