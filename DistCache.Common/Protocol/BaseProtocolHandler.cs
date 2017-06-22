@@ -26,7 +26,14 @@ namespace DistCache.Common.Protocol
 
             public void Dispose()
             {
-                this._protocolHandler._tasksAwaitingResponse.TryRemove(Id, out TaskCompletionDisposableSource ingoreMe);
+                if(this._protocolHandler._tasksAwaitingResponse.TryRemove(Id, out TaskCompletionDisposableSource ingoreMe))
+                {
+
+                }
+                else
+                {
+                    throw new Exception("");
+                }
             }
         }
 
@@ -39,8 +46,11 @@ namespace DistCache.Common.Protocol
         public TaskCompletionDisposableSource CreateTaskCompletionDisposableSource(Guid? id = null)
         {
             TaskCompletionDisposableSource result = new TaskCompletionDisposableSource(this, id);
-            this._tasksAwaitingResponse.TryAdd(result.Id, result);
-            return result;
+            if (this._tasksAwaitingResponse.TryAdd(result.Id, result))
+            {
+                return result;
+            }
+            throw new Exception("");
         }
 
         protected override sealed bool HandleMessages(byte[] message)

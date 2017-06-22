@@ -68,15 +68,15 @@ namespace DistCache.Client
         {
             this.ProtocolHandler.Dispose();
         }
-
         public async Task<string> GetMessage(string i)
         {
-                using (var m = this.ProtocolHandler.CreateTaskCompletionDisposableSource())
-                {
-                    this.ProtocolHandler.SendMessage(new EchoRequest() { RequestId = m.Id, Echo = $"msg {i}" });
-                    await m.Task;
-                    return (m.Task.Result as EchoResponse).Echo;
-                }
+            using (var m = this.ProtocolHandler.CreateTaskCompletionDisposableSource())
+            {
+                this.ProtocolHandler.SendMessage(new EchoRequest() { RequestId = m.Id, Echo = $"msg {i}" });
+                await m.Task;
+                Console.WriteLine((m.Task.Result as EchoResponse).Echo);
+                return (m.Task.Result as EchoResponse).Echo;
+            }
         }
         #endregion
     }

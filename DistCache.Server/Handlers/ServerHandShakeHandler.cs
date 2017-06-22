@@ -50,30 +50,29 @@ namespace DistCache.Server.Protocol.Handlers
                     State = HandShakeState.NotAuthorised;
                 }
 
-                using (var waiter = new ManualResetEventSlim(false))
+                var waiter = new TaskCompletionSource<bool>();
+
+                this.SendMessage(new HandShakeOutcome()
                 {
-                    this.SendMessage(new HandShakeOutcome()
-                    {
-                        MessageType = State == HandShakeState.Authorised ? MessageTypeEnum.AuthRequestOk : MessageTypeEnum.AuthRequestError,
-                        ServerGuid = State == HandShakeState.Authorised ? this._server.ServerGuid : Guid.Empty
-                    }, waiter);
+                    MessageType = State == HandShakeState.Authorised ? MessageTypeEnum.AuthRequestOk : MessageTypeEnum.AuthRequestError,
+                    ServerGuid = State == HandShakeState.Authorised ? this._server.ServerGuid : Guid.Empty
+                }, waiter);
 
-
-                    if (waiter.Wait(Config.SocketWriteTimeout) && State == HandShakeState.Authorised)
+                waiter.Task.Wait();
+                if (waiter.Task.Result && State == HandShakeState.Authorised)
+                {
+                    if (msg.MessageType == MessageTypeEnum.ClientAuthRequest)
                     {
-                        if (msg.MessageType == MessageTypeEnum.ClientAuthRequest)
-                        {
-                            _server.ClientConnected(msg.RegisteredGuid, TemporaryID);
-                        }
-                        else if (msg.MessageType == MessageTypeEnum.ServerAuthRequest)
-                        {
-                            _server.ServerConnected(msg.RegisteredGuid, TemporaryID);
-                        }
+                        _server.ClientConnected(msg.RegisteredGuid, TemporaryID);
                     }
-                    else
+                    else if (msg.MessageType == MessageTypeEnum.ServerAuthRequest)
                     {
-                        _server.ConnectionFailed(this, TemporaryID);
+                        _server.ServerConnected(msg.RegisteredGuid, TemporaryID);
                     }
+                }
+                else
+                {
+                    _server.ConnectionFailed(this, TemporaryID);
                 }
             }
             catch (Exception ex)

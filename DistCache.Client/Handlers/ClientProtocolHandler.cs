@@ -37,6 +37,10 @@ namespace DistCache.Client.Protocol.Handlers
             {
                 toSet.TrySetResult(baseResponse);
             }
+            else
+            {
+
+            }
         }
     }
 }

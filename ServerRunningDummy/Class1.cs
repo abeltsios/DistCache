@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -23,40 +24,35 @@ namespace ServerRunningDummy
             {
                 Password = pass
             };
-
             using (var srv = new CacheServer(serverConfig))
             {
-                int clients = 200;
-                int msgs = 200;
+                int clients = 10;
+                int msgs = 20000;
 
-                var ls = new List<DistCacheClient>();
+                var ls = new ConcurrentBag<DistCacheClient>();
 
                 for (int k = 0; k < clients; ++k)
                 {
                     var client = DistCacheClient.Create(new DistCacheClientConfig() { Password = pass });
                     ls.Add(client);
-                   
+
                 }
 
                 Stopwatch sw = Stopwatch.StartNew();
                 long cnt = 0;
                 for (int i = 0; i < msgs; ++i)
                 {
-
                     foreach (var cl in ls)
                     {
-                        string s = cl.GetMessage($"{i}").Result;
-                        ++cnt;
-                        if (cnt % 1000 == 0)
-                        {
-                            Console.WriteLine($"sent {cnt + 1}");
-                        }
+                        string s = cl.GetMessage($"{Interlocked.Increment(ref cnt)}").Result;
                     }
                 }
-                Console.WriteLine(sw.Elapsed);
-                Console.ReadLine();
-
-
+                string ss = "";
+                while (ss != "q")
+                {
+                    Console.WriteLine($"got {Interlocked.Read(ref cnt)} {sw.Elapsed}");
+                    ss = Console.ReadLine();
+                }
             }
         }
     }
