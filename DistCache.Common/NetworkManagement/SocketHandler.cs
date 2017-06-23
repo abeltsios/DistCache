@@ -72,6 +72,7 @@ namespace DistCache.Common.NetworkManagement
         //for messages
         private TcpClient _connection;
         private MemoryStream _memoryStream;
+        private long _posistionReadUntil = 0;
         private readonly object lockMe;
 
         public event EventHandler<SocketHandler> ConnectionError;
@@ -103,6 +104,7 @@ namespace DistCache.Common.NetworkManagement
                 other._memoryStream = null;
                 this.Config = other.Config;
                 this._messagesToSend = other._messagesToSend;
+                this._posistionReadUntil = other._posistionReadUntil;
             }
         }
 
@@ -189,37 +191,36 @@ namespace DistCache.Common.NetworkManagement
             {
                 if (toRead >= 0 && _shouldKeepHandlingMessages)
                 {
+                    //message pattern is 
+                    // A:B (A is 4bytes:int: byte size of B, B is gzipped message)
+                    //append read data to the end
                     _memoryStream.Position = _memoryStream.Length;
                     _memoryStream.Write(b, 0, toRead);
+                    //back to the flagged beginning of the message
+                    _memoryStream.Position = _posistionReadUntil;
                     using (var sr = new BinaryReader(_memoryStream, Encoding.UTF8, true))
                     {
-                        while (_shouldKeepHandlingMessages && (_memoryStream.Length) > 4)
+                        //if we should read data
+                        //and data in buffer are enough
+                        //at least to check packet size
+                        while (_shouldKeepHandlingMessages && (_memoryStream.Length - _memoryStream.Position) > 4)
                         {
-                            _memoryStream.Position = 0;
-
+                            //read incoming message size
                             int messageLength = sr.ReadInt32();
+                            //if we have enough data to fully consume message
                             if ((_memoryStream.Length - _memoryStream.Position) >= messageLength)
                             {
+                                //read and decompress packet
                                 byte[] msg = Utilities.CompressionUtilitities.Decompress(sr.ReadBytes(messageLength));
-
-                                if (SocketStatus)
-                                {
-                                    int lengthRemaining = (int)(_memoryStream.Length - _memoryStream.Position);
-                                    if (lengthRemaining > 0)
-                                    {
-                                        byte[] remBuffer = sr.ReadBytes(lengthRemaining);
-                                        _memoryStream.SetLength(0);
-                                        _memoryStream.Write(remBuffer, 0, lengthRemaining);
-                                    }
-                                    else
-                                    {
-                                        _memoryStream.SetLength(0);
-                                    }
-                                }
-
+                                //flag read data position
+                                _posistionReadUntil = _memoryStream.Position;
                                 _shouldKeepHandlingMessages = HandleMessages(msg);
                                 if (!_shouldKeepHandlingMessages)
+                                {
+                                    //we shouldn't handle any more messages
+                                    //or consume any packets
                                     break;
+                                }
                             }
                             else
                             {
@@ -228,8 +229,26 @@ namespace DistCache.Common.NetworkManagement
                         }
 
                     }
-
                 }
+                if (SocketStatus)
+                    //if the socket is passed to another handler
+                    //and we would be in a non resolvable state
+                    lock (lockMe)
+                    {
+                        //lock and slice the memory stream
+                        if (SocketStatus)
+                        {
+                            using (var br = new BinaryReader(_memoryStream, Encoding.UTF8, true))
+                            {
+                                _memoryStream.Position = _posistionReadUntil;
+                                var tmpSlice = br.ReadBytes((int)(_memoryStream.Length - _posistionReadUntil));
+                                _memoryStream.SetLength(0); //position resets
+                                _memoryStream.Write(tmpSlice, 0, tmpSlice.Length);
+                                _memoryStream.Position = _posistionReadUntil = 0;
+                            }
+                        }
+                    }
+
                 if (_shouldKeepHandlingMessages)
                 {
                     InitRead();

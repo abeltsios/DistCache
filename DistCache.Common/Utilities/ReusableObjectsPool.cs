@@ -12,16 +12,19 @@ namespace DistCache.Common.Utilities
     public class ReusableObjectsPool<T> : IDisposable where T : class
     {
         protected delegate T PoolableObjectFactory();
+        protected delegate bool PoolableObjectCheck(T toCheck);
 
-        public static int MaxPoolSize { get; set; } = 1000;
+        public static int MaxPoolSize { get; protected set; } = 1000;
 
         protected T FromPool { get; private set; }
+        protected PoolableObjectCheck OnReturnToPoolCheck { get; private set; }
 
         private static readonly bool ShouldDispose = (typeof(T) is IDisposable);
 
-        protected ReusableObjectsPool(PoolableObjectFactory factory = null)
+        protected ReusableObjectsPool(PoolableObjectFactory factory = null, PoolableObjectCheck check = null)
         {
             this.FromPool = GetFromPool(factory);
+            this.OnReturnToPoolCheck = check;
         }
 
         private static ConcurrentQueue<T> ObjectPool = new ConcurrentQueue<T>();
@@ -42,9 +45,9 @@ namespace DistCache.Common.Utilities
             }
         }
 
-        protected static void ReturnToPool(T toPool)
+        protected static void ReturnToPool(T toPool, PoolableObjectCheck extraCheck=null)
         {
-            if (ObjectPool.Count < MaxPoolSize)
+            if (ObjectPool.Count < MaxPoolSize && (extraCheck == null || extraCheck.Invoke(toPool)))
             {
                 ObjectPool.Enqueue(toPool);
             }

@@ -26,8 +26,8 @@ namespace ServerRunningDummy
             };
             using (var srv = new CacheServer(serverConfig))
             {
-                int clients = 10;
-                int msgs = 20000;
+                int clients = 1;
+                int msgs = 50000;
 
                 var ls = new ConcurrentBag<DistCacheClient>();
 

@@ -74,7 +74,7 @@ namespace DistCache.Client
             {
                 this.ProtocolHandler.SendMessage(new EchoRequest() { RequestId = m.Id, Echo = $"msg {i}" });
                 await m.Task;
-                Console.WriteLine((m.Task.Result as EchoResponse).Echo);
+                //Console.WriteLine((m.Task.Result as EchoResponse).Echo);
                 return (m.Task.Result as EchoResponse).Echo;
             }
         }

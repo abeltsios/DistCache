@@ -11,7 +11,7 @@ namespace DistCache.Common.Utilities
     {
 
         public MemoryStream Stream => FromPool;
-        public MemoryStreamPool() : base(() => { return new MemoryStream(); })
+        public MemoryStreamPool() : base(() => { return new MemoryStream(); }, (o) => { return o.Capacity < (100 * (1 << 10)); })
         {
 
         }
